@@ -272,6 +272,7 @@ export async function renderStandingsPage(params) {
                   <div class="standings-table-wrapper">
                     <div class="standings-header">
                       <div style="flex: 3;">Squadra</div>
+                      <div class="text-center font-bold" title="Punti">PT</div>
                       <div class="text-center" title="Partite Giocate">G</div>
                       <div class="text-center" title="Vittorie">V</div>
                       <div class="text-center" title="Pareggi">N</div>
@@ -279,7 +280,6 @@ export async function renderStandingsPage(params) {
                       <div class="text-center mobile-hide" title="Gol Fatti">GF</div>
                       <div class="text-center mobile-hide" title="Gol Subiti">GS</div>
                       <div class="text-center" title="Differenza Reti">DR</div>
-                      <div class="text-center font-bold" title="Punti">PT</div>
                     </div>
                     
                     ${standings.map((team, index) => `
@@ -291,6 +291,7 @@ export async function renderStandingsPage(params) {
                           ` : ''}
                           <a href="/team/${team.id}" class="team-name-truncate" style="color: inherit; text-decoration: none; font-weight: bold;">${team.name}</a>
                         </div>
+                        <div class="text-center font-bold points">${team.points}</div>
                         <div class="text-center">${team.played}</div>
                         <div class="text-center">${team.won}</div>
                         <div class="text-center">${team.drawn}</div>
@@ -298,7 +299,6 @@ export async function renderStandingsPage(params) {
                         <div class="text-center mobile-hide">${team.goalsFor}</div>
                         <div class="text-center mobile-hide">${team.goalsAgainst}</div>
                         <div class="text-center">${team.goalDifference > 0 ? '+' : ''}${team.goalDifference}</div>
-                        <div class="text-center font-bold points">${team.points}</div>
                       </div>
                     `).join('')}
                   </div>

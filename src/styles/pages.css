@@ -93,10 +93,10 @@
 .standings-row {
     display: grid;
     /* Mobile: 7 Visible Columns 
-           Team(3fr) | G(1fr) | V(1fr) | N(1fr) | P(1fr) | DR(1fr) | PT(1fr) 
+           Team(3fr) | PT(1fr) | G(1fr) | V(1fr) | N(1fr) | P(1fr) | DR(1fr)
            GF & GS are hidden via .mobile-hide
         */
-    grid-template-columns: 3fr repeat(4, 1fr) 1fr 1fr;
+    grid-template-columns: 3fr repeat(5, 1fr) 1fr;
     align-items: center;
     gap: 0.25rem;
     padding: 0.75rem var(--spacing-xs);
@@ -109,7 +109,7 @@
     .standings-header,
     .standings-row {
         /* Desktop: Show all columns including GF, GS */
-        grid-template-columns: 3fr repeat(4, 1fr) repeat(2, 1fr) 1fr 1fr;
+        grid-template-columns: 3fr 1fr repeat(4, 1fr) repeat(2, 1fr) 1fr;
         gap: 0.5rem;
         padding: 1rem var(--spacing-sm);
         font-size: 0.95rem;
