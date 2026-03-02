@@ -3,7 +3,8 @@
 
 const config = {
     supabase: {
-        url: typeof window !== 'undefined' ? `${window.location.origin}/api/supabase` : 'http://localhost:3000/api/supabase',
+        // Direct URL for Vercel production
+        url: 'https://etbpjlpjzvqcpphsywgu.supabase.co',
         anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM'
     },
     facebook: {
