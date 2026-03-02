@@ -92,13 +92,15 @@ export async function renderStandingsPage(params) {
   page.innerHTML = `
     <h1 class="text-center mb-xl">Stagione ${currentSeason.year}</h1>
     
-    <div class="category-select-container mb-xl text-center">
-      <label for="category-select" class="text-yellow" style="font-weight: bold; margin-right: 10px; text-transform: uppercase;">Categoria:</label>
-      <select id="category-select" class="group-select" style="max-width: 300px; display: inline-block;">
-        ${TOURNAMENT_CATEGORIES.map(cat => `
-          <option value="${cat}">${cat}</option>
-        `).join('')}
-      </select>
+    <div class="text-center mb-xl">
+      <div class="category-select-container">
+        <label for="category-select" class="category-select-label">Categoria:</label>
+        <select id="category-select" class="group-select">
+          ${TOURNAMENT_CATEGORIES.map(cat => `
+            <option value="${cat}">${cat}</option>
+          `).join('')}
+        </select>
+      </div>
     </div>
     
     <div id="standings-content">
