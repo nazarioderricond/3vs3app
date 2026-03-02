@@ -836,10 +836,18 @@
     }
 
     .matches-section-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
+    }
+}
+
+/* Tablet view (side by side matches) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .matches-section-wrapper {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        /* Side by side on tablet/mobile */
-        gap: var(--spacing-sm);
+        gap: var(--spacing-md);
     }
 }
 
