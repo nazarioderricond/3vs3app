@@ -373,7 +373,7 @@ export async function renderStandingsPage(params) {
             </div>
           `;
     }).join('') : '<p class="text-center mt-xl">Nessun girone in questa categoria.</p>'}
-      </div>
+      </div> <!-- Closes .groups-container -->
 
       <!-- TOP SCORERS SECTION -->
       ${sortedScorers.length > 0 ? `
@@ -395,8 +395,8 @@ export async function renderStandingsPage(params) {
                 <div style="flex: 1; text-align: center; font-weight: bold; color: var(--color-yellow); font-size: 1.1rem;">${scorer.goals}</div>
               </div>
             `).join('')}
+            </div>
           </div>
-        </div>
         </div>
       ` : ''}
 
@@ -432,8 +432,8 @@ export async function renderStandingsPage(params) {
                 </div>
               `;
     }).join('')}
+            </div>
           </div>
-        </div>
         </div>
       ` : ''}
     `;
@@ -482,6 +482,8 @@ export async function renderStandingsPage(params) {
       viewSelect.addEventListener('change', (e) => {
         const selectedView = e.target.value;
         const allSections = contentContainer.querySelectorAll('.view-section');
+
+        console.log(`[View Filter] Selected: ${selectedView}. Total sections found: ${allSections.length}`);
 
         allSections.forEach(sec => {
           if (selectedView === 'all') {
