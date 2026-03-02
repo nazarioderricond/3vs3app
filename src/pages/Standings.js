@@ -103,6 +103,10 @@ export async function renderStandingsPage(params) {
       </div>
     </div>
     
+    <div id="view-filter-container" class="text-center mb-xl" style="display: none; transition: opacity 0.3s ease;">
+      <!-- View select will be injected here dynamically -->
+    </div>
+    
     <div id="standings-content">
       <!-- Content will be loaded here -->
     </div>
@@ -111,6 +115,7 @@ export async function renderStandingsPage(params) {
   // Function to render content for a specific category
   function renderCategoryContent(category) {
     const contentContainer = page.querySelector('#standings-content');
+    const viewFilterContainer = page.querySelector('#view-filter-container');
 
     // Filter groups for this category
     const categoryGroups = groups ? groups.filter(g => g.category === category) : [];
@@ -261,8 +266,9 @@ export async function renderStandingsPage(params) {
         .sort((a, b) => new Date(a.match_date || 0) - new Date(b.match_date || 0));
 
       return `
-            <div class="glass-card mb-2xl">
-              <h2 class="text-center mb-lg" style="color: var(--color-yellow); text-transform: uppercase; letter-spacing: 2px;">${group.name}</h2>
+            <div class="view-section" id="view-group-${group.id}">
+              <div class="glass-card mb-2xl">
+                <h2 class="text-center mb-lg" style="color: var(--color-yellow); text-transform: uppercase; letter-spacing: 2px;">${group.name}</h2>
               
               <div class="group-layout grid grid-3-desktop" style="gap: 2rem;">
                 
@@ -366,13 +372,14 @@ export async function renderStandingsPage(params) {
               </div>
             </div>
           `;
-    }).join('') : '<p class="text-center mt-xl">Nessun girone o squadra in questa categoria.</p>'}
+    }).join('') : '<p class="text-center mt-xl">Nessun girone in questa categoria.</p>'}
       </div>
 
       <!-- TOP SCORERS SECTION -->
       ${sortedScorers.length > 0 ? `
-        <div class="scorers-section glass-card mb-2xl">
-          <h3 class="mb-md border-bottom-yellow">Classifica Marcatori</h3>
+        <div class="view-section" id="view-scorers">
+          <div class="scorers-section glass-card mb-2xl">
+            <h3 class="mb-md border-bottom-yellow">Classifica Marcatori</h3>
           <div class="standings-table-wrapper">
             <div class="standings-header">
               <div style="width: 50px; text-align: center;">Pos</div>
@@ -390,12 +397,14 @@ export async function renderStandingsPage(params) {
             `).join('')}
           </div>
         </div>
+        </div>
       ` : ''}
 
       <!-- PLAYOFF PHASE -->
       ${categoryPlayoffMatches.length > 0 ? `
-        <div class="playoff-section mt-2xl">
-          <h2 class="text-center mb-xl" style="color: var(--color-black); background: var(--color-yellow); padding: 0.8rem 2rem; border-radius: 50px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); font-weight: 800;">Fase Finale - ${category}</h2>
+        <div class="view-section" id="view-playoffs">
+          <div class="playoff-section mt-2xl">
+            <h2 class="text-center mb-xl" style="color: var(--color-black); background: var(--color-yellow); padding: 0.8rem 2rem; border-radius: 50px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); font-weight: 800;">Fase Finale - ${category}</h2>
           
           <div class="grid grid-2">
             ${Object.entries(playoffPhases).map(([phase, matches]) => {
@@ -425,10 +434,78 @@ export async function renderStandingsPage(params) {
     }).join('')}
           </div>
         </div>
+        </div>
       ` : ''}
     `;
 
     contentContainer.innerHTML = html;
+
+    // Build the View Filter Dropdown Options
+    let viewOptionsHTML = '';
+    let defaultView = null;
+
+    if (categoryGroups.length > 0) {
+      defaultView = `group-${categoryGroups[0].id}`;
+      categoryGroups.forEach(g => {
+        viewOptionsHTML += `<option value="group-${g.id}">${g.name}</option>`;
+      });
+    }
+
+    if (categoryPlayoffMatches.length > 0) {
+      if (!defaultView) defaultView = 'playoffs';
+      viewOptionsHTML += `<option value="playoffs">Fase Finale</option>`;
+    }
+
+    if (sortedScorers.length > 0) {
+      if (!defaultView) defaultView = 'scorers';
+      viewOptionsHTML += `<option value="scorers">Classifica Marcatori</option>`;
+    }
+
+    // Only show the filter if there are actually sections to toggle between
+    const sectionsCount = categoryGroups.length + (categoryPlayoffMatches.length > 0 ? 1 : 0) + (sortedScorers.length > 0 ? 1 : 0);
+
+    if (sectionsCount > 1) {
+      viewOptionsHTML += `<option value="all">Filtro: Mostra Tutto</option>`; // The user can still see all
+
+      viewFilterContainer.innerHTML = `
+        <div class="category-select-container" style="border-color: rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.5);">
+          <label for="view-select" class="category-select-label" style="color: rgba(255, 255, 255, 0.8);">Vista:</label>
+          <select id="view-select" class="group-select" style="min-width: 200px; border-color: transparent;">
+            ${viewOptionsHTML}
+          </select>
+        </div>
+      `;
+      viewFilterContainer.style.display = 'block';
+
+      // Attach event listener for the view toggle
+      const viewSelect = viewFilterContainer.querySelector('#view-select');
+      viewSelect.addEventListener('change', (e) => {
+        const selectedView = e.target.value;
+        const allSections = contentContainer.querySelectorAll('.view-section');
+
+        allSections.forEach(sec => {
+          if (selectedView === 'all') {
+            sec.style.display = 'block';
+            sec.style.animation = 'fadeInUp 0.4s ease forwards';
+          } else if (sec.id === `view-${selectedView}`) {
+            sec.style.display = 'block';
+            sec.style.animation = 'fadeInUp 0.4s ease forwards';
+          } else {
+            sec.style.display = 'none';
+          }
+        });
+      });
+
+      // Trigger initial selection
+      viewSelect.value = defaultView;
+      viewSelect.dispatchEvent(new Event('change'));
+
+    } else {
+      // If there's only 1 thing or 0 things, hide the view filter completely and show everything
+      viewFilterContainer.style.display = 'none';
+      const allSections = contentContainer.querySelectorAll('.view-section');
+      allSections.forEach(sec => sec.style.display = 'block');
+    }
   }
 
   // Handle dropdown changes
