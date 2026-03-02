@@ -1,0 +1,176 @@
+/* ============================================
+   AUTHENTICATION PAGES STYLES
+   ============================================ */
+
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.auth-card {
+    max-width: 500px;
+    width: 100%;
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-header h1 {
+    margin-bottom: 0;
+}
+
+.auth-header h2 {
+    margin-top: -0.5rem;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.auth-form {
+    margin-top: var(--spacing-lg);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    backdrop-filter: blur(5px);
+}
+
+.modal.hidden {
+    display: none !important;
+}
+
+.modal-content {
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    border: 1px solid var(--color-yellow);
+}
+
+/* Auth Page Styles */
+.image-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.image-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid var(--color-yellow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-yellow);
+}
+
+.file-input {
+    display: none;
+}
+
+.file-label {
+    display: inline-block;
+    cursor: pointer;
+}
+
+/* Error Message */
+.error-message {
+    padding: var(--spacing-sm);
+    background: rgba(220, 38, 38, 0.2);
+    border: 2px solid #dc2626;
+    border-radius: var(--radius-md);
+    color: #fca5a5;
+    font-size: 0.875rem;
+    margin-top: var(--spacing-sm);
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-10px);
+    }
+
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+.auth-footer {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.auth-footer p {
+    margin-bottom: var(--spacing-xs);
+}
+
+.auth-footer a {
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.auth-footer a:hover {
+    text-shadow: 0 0 10px var(--color-yellow);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .auth-container {
+        padding: var(--spacing-sm);
+    }
+
+    .auth-card {
+        padding: var(--spacing-md);
+    }
+}
+
+/* Blended Logo Effect */
+.logo-blended {
+    max-width: 200px;
+    height: auto;
+    margin-bottom: 1rem;
+    /* Soften edges with a radial mask */
+    -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+    mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+    /* Add a glow to integrate with background */
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+    /* Optional: slight opacity to blend texture */
+    opacity: 0.95;
+    transition: all 0.3s ease;
+}
+
+.logo-blended:hover {
+    filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.8));
+    transform: scale(1.05);
+}
