@@ -92,14 +92,13 @@ export async function renderStandingsPage(params) {
   page.innerHTML = `
     <h1 class="text-center mb-xl">Stagione ${currentSeason.year}</h1>
     
-    <div class="category-tabs-container mb-xl" style="overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 1rem;">
-      <div class="category-tabs" style="display: inline-flex; gap: 0.5rem; min-width: 100%; justify-content: center;">
-        ${TOURNAMENT_CATEGORIES.map((cat, index) => `
-          <button class="btn ${index === 0 ? 'btn-primary' : 'btn-secondary'} category-tab" data-category="${cat}">
-            ${cat}
-          </button>
+    <div class="category-select-container mb-xl text-center">
+      <label for="category-select" class="text-yellow" style="font-weight: bold; margin-right: 10px; text-transform: uppercase;">Categoria:</label>
+      <select id="category-select" class="group-select" style="max-width: 300px; display: inline-block;">
+        ${TOURNAMENT_CATEGORIES.map(cat => `
+          <option value="${cat}">${cat}</option>
         `).join('')}
-      </div>
+      </select>
     </div>
     
     <div id="standings-content">
@@ -430,22 +429,10 @@ export async function renderStandingsPage(params) {
     contentContainer.innerHTML = html;
   }
 
-  // Handle tab clicks with event delegation to avoid binding issues
-  const tabsContainer = page.querySelector('.category-tabs');
-  tabsContainer.addEventListener('click', (e) => {
-    const tab = e.target.closest('.category-tab');
-    if (!tab) return;
-
-    // Update active state
-    page.querySelectorAll('.category-tab').forEach(t => {
-      t.classList.remove('btn-primary', 'active');
-      t.classList.add('btn-secondary');
-    });
-    tab.classList.remove('btn-secondary');
-    tab.classList.add('btn-primary', 'active');
-
-    // Render content
-    const category = tab.dataset.category;
+  // Handle dropdown changes
+  const categorySelect = page.querySelector('#category-select');
+  categorySelect.addEventListener('change', (e) => {
+    const category = e.target.value;
     currentCategory = category;
     renderCategoryContent(category);
   });
@@ -457,11 +444,10 @@ export async function renderStandingsPage(params) {
 
   let currentCategory = firstCategoryWithData;
 
-  // Set initial active tab
-  const initialTab = page.querySelector(`[data-category="${firstCategoryWithData}"]`);
-  if (initialTab) {
-    initialTab.classList.remove('btn-secondary');
-    initialTab.classList.add('btn-primary', 'active');
+  // Set initial selected value
+  const initialSelect = page.querySelector('#category-select');
+  if (initialSelect) {
+    initialSelect.value = firstCategoryWithData;
     renderCategoryContent(firstCategoryWithData);
   } else {
     renderCategoryContent(TOURNAMENT_CATEGORIES[0]);

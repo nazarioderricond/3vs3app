@@ -679,8 +679,9 @@
 
 .matches-list-small {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 0.5rem;
+    width: 100%;
 }
 
 .match-row-small {
@@ -690,6 +691,9 @@
     font-size: 0.85rem;
     border-left: 2px solid transparent;
     transition: all 0.2s ease;
+    word-wrap: break-word;
+    /* allow the row to shrink and break text if needed */
+    overflow: hidden;
 }
 
 .match-row-small:hover {
@@ -785,8 +789,18 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 80px;
-    /* Force truncation on small screens */
+    max-width: 65px;
+    /* Tighter for ultra small screens */
+}
+
+@media (min-width: 480px) {
+
+    .match-teams-score span:first-child,
+    .match-teams-score span:last-child,
+    .match-teams-vs span:first-child,
+    .match-teams-vs span:last-child {
+        max-width: 80px;
+    }
 }
 
 @media (min-width: 768px) {
