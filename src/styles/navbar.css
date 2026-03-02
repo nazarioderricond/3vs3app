@@ -207,6 +207,12 @@
     transition: all 0.3s ease;
 }
 
+/* Default state for mobile elements on desktop (Must be before media query) */
+.mobile-only-links,
+.mobile-user-controls {
+    display: none;
+}
+
 @media (max-width: 968px) {
     .navbar-toggle {
         display: flex;
@@ -280,10 +286,4 @@
         transform: none;
         margin-top: var(--spacing-xs);
     }
-}
-
-/* Default state for mobile elements on desktop */
-.mobile-only-links,
-.mobile-user-controls {
-    display: none;
 }
