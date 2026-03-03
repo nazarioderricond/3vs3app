@@ -78,24 +78,25 @@ h1 {
   font-size: 2.5rem;
   color: var(--color-yellow);
   text-align: center;
-  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
   margin-bottom: var(--spacing-lg);
   position: relative;
-  display: inline-block;
-  padding-bottom: 10px;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.8rem 2.5rem;
+  background: rgba(15, 46, 36, 0.9);
+  /* Dark green premium backdrop */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 100px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.05);
 }
 
 h1::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 4px;
-  background: var(--color-yellow);
-  border-radius: 2px;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  display: none;
 }
 
 html {
@@ -421,10 +422,29 @@ body {
 
 .text-yellow {
   color: var(--color-yellow);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .text-white {
   color: var(--color-white);
+}
+
+.section-title {
+  display: inline-block;
+  background: rgba(15, 46, 36, 0.9);
+  color: var(--color-yellow);
+  padding: 0.6rem 2rem;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  margin-bottom: var(--spacing-md);
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
 }
 
 .mt-sm {

@@ -120,5 +120,15 @@ export async function renderNavbar() {
     });
   }
 
+  // Close mobile menu when any nav link is clicked
+  const allNavLinks = nav.querySelectorAll('[data-link]');
+  allNavLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      if (navMenu) {
+        navMenu.classList.remove('active');
+      }
+    });
+  });
+
   return nav;
 }

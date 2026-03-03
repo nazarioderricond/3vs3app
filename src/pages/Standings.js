@@ -371,6 +371,7 @@ export async function renderStandingsPage(params) {
                 </div>
               </div>
             </div>
+            </div> <!-- Closes .view-section -->
           `;
     }).join('') : '<p class="text-center mt-xl">Nessun girone in questa categoria.</p>'}
       </div> <!-- Closes .groups-container -->
