@@ -217,7 +217,7 @@ export async function renderAdminMatchesPage() {
                       </div>
                     </div>
                     
-                    <div class="match-actions text-center mt-sm flex gap-sm justify-center">
+                    <div class="match-actions text-center mt-md" style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">
                       ${match.status === 'scheduled' ? `
                         <button class="btn-small btn-success start-match-btn" data-id="${match.id}">
                           ▶️ Avvia
@@ -252,7 +252,7 @@ export async function renderAdminMatchesPage() {
                       ` : ''}
           
                       ${match.status === 'completed' ? `
-                        <button class="btn-small btn-secondary reopen-match-btn" data-id="${match.id}">
+                        <button class="btn-small btn-secondary reopen-match-btn" data-id="${match.id}" title="Riapri Partita" style="flex: 1; min-width: 80px;">
                           🔄 Riapri
                         </button>
                       ` : ''}
@@ -267,10 +267,12 @@ export async function renderAdminMatchesPage() {
                         data-phase="${match.phase}"
                         data-group="${match.group_id || ''}"
                         data-category="${match.category || ''}"
+                        title="Modifica Partita"
+                        style="flex: 1; min-width: 80px;"
                       >
-                        ✏️ Modifica
+                        ✏️ Modif.
                       </button>
-                      <button class="btn-small btn-danger delete-match-btn" data-id="${match.id}">
+                      <button class="btn-small btn-danger delete-match-btn" data-id="${match.id}" title="Elimina Partita" style="flex: 1; min-width: 40px;">
                         🗑️
                       </button>
                     </div>
@@ -635,9 +637,9 @@ export async function renderAdminMatchesPage() {
             </div>
           </div>
           
-          <div class="match-actions text-center mt-sm flex gap-sm justify-center">
+          <div class="match-actions text-center mt-md" style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">
             ${match.status === 'scheduled' ? `
-              <button class="btn-small btn-success start-match-btn" data-id="${match.id}">
+              <button class="btn-small btn-success start-match-btn" data-id="${match.id}" style="flex: 1; min-width: 100px;">
                 ▶️ Avvia
               </button>
             ` : ''}
@@ -670,7 +672,7 @@ export async function renderAdminMatchesPage() {
             ` : ''}
 
             ${match.status === 'completed' ? `
-              <button class="btn-small btn-secondary reopen-match-btn" data-id="${match.id}">
+              <button class="btn-small btn-secondary reopen-match-btn" data-id="${match.id}" title="Riapri Partita" style="flex: 1; min-width: 80px;">
                 🔄 Riapri
               </button>
             ` : ''}
@@ -685,10 +687,12 @@ export async function renderAdminMatchesPage() {
               data-phase="${match.phase}"
               data-group="${match.group_id || ''}"
               data-category="${match.category || ''}"
+              title="Modifica Partita"
+              style="flex: 1; min-width: 80px;"
             >
-              ✏️ Modifica
+              ✏️ Modif.
             </button>
-            <button class="btn-small btn-danger delete-match-btn" data-id="${match.id}">
+            <button class="btn-small btn-danger delete-match-btn" data-id="${match.id}" title="Elimina Partita" style="flex: 1; min-width: 40px;">
               🗑️
             </button>
           </div>
