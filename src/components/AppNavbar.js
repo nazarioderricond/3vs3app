@@ -50,6 +50,7 @@ export async function renderNavbar() {
              <a href="/admin/teams" data-link class="nav-link">Squadre</a>
              <a href="/admin/players" data-link class="nav-link">Giocatori</a>
              <a href="/admin/matches" data-link class="nav-link">Partite</a>
+             <a href="/admin/admins" data-link class="nav-link">Amministratori</a>
           </div>
         ` : ''}
 
