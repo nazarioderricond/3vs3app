@@ -174,8 +174,8 @@
     font-size: 0.875rem;
     padding: 0.4rem 1rem;
     background: transparent;
-    color: var(--color-yellow);
-    border: 2px solid var(--color-yellow);
+    color: #ff4444;
+    border: 2px solid #ff4444;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.3s ease;
@@ -184,8 +184,9 @@
 }
 
 .btn-logout:hover {
-    background: var(--color-yellow);
-    color: var(--color-black);
+    background: #ff4444;
+    color: var(--color-white);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
 }
 
 /* Mobile Menu Toggle */

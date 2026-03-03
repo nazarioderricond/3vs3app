@@ -43,21 +43,21 @@ export async function renderNavbar() {
             </div>
           </div>
           <!-- Mobile Admin Links (Flat list) -->
-          <div class="mobile-only-links">
-             <div class="nav-divider">Admin</div>
-             <a href="/admin/matches" data-link class="nav-link">Partite</a>
+          <div class="mobile-only-links" style="background: rgba(255, 215, 0, 0.05); border-radius: 8px; padding-bottom: 1rem; border: 1px solid rgba(255, 215, 0, 0.2);">
+             <div class="nav-divider" style="color: var(--color-yellow); font-size: 1rem; border-bottom: 1px solid rgba(255,215,0,0.2); margin-bottom: 0.5rem; padding-bottom: 0.5rem; text-align: center;">Gestione Admin</div>
+             <a href="/admin/seasons" data-link class="nav-link">Stagioni</a>
              <a href="/admin/groups" data-link class="nav-link">Gironi</a>
              <a href="/admin/teams" data-link class="nav-link">Squadre</a>
              <a href="/admin/players" data-link class="nav-link">Giocatori</a>
-             <a href="/admin/seasons" data-link class="nav-link">Stagioni</a>
+             <a href="/admin/matches" data-link class="nav-link">Partite</a>
           </div>
         ` : ''}
 
         <!-- Mobile User Controls -->
         ${currentProfile ? `
           <div class="mobile-user-controls">
-            <div class="nav-divider">Profilo (${currentProfile.first_name})</div>
-            <button class="nav-link" id="mobile-logout-btn">Logout</button>
+            <div class="nav-divider" style="text-align: center; margin-top: 1rem;">Profilo (${currentProfile.first_name})</div>
+            <button class="nav-link" id="mobile-logout-btn" style="color: #ff4444; font-weight: 700; text-transform: uppercase;">Logout</button>
           </div>
         ` : ''}
       </div>
