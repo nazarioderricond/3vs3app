@@ -261,7 +261,7 @@
     /* Show mobile-only elements */
     .mobile-only-links,
     .mobile-user-controls {
-        display: flex;
+        display: flex !important;
         flex-direction: column;
         width: 100%;
         gap: var(--spacing-sm);
