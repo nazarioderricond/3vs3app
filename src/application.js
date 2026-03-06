@@ -12,6 +12,7 @@ import { renderHistoryPage } from './pages/History.js';
 import { renderNewsPage } from './pages/News.js';
 import { renderTeamDetailsPage } from './pages/TeamDetails.js';
 import { renderMatchDetailsPage } from './pages/MatchDetails.js';
+import { renderPublicMatchesPage } from './pages/PublicMatches.js';
 import { renderAdminSeasonsPage } from './pages/admin/Seasons.js';
 import { renderAdminTeamsPage } from './pages/admin/Teams.js';
 import { renderAdminPlayersPage } from './pages/admin/Players.js';
@@ -29,6 +30,7 @@ const routes = {
     '/register': { component: renderRegisterPage, requireAuth: false },
     '/standings': { component: renderStandingsPage, requireAuth: true },
     '/teams': { component: renderTeamsPage, requireAuth: true },
+    '/matches': { component: renderPublicMatchesPage, requireAuth: true },
     '/history': { component: renderHistoryPage, requireAuth: true },
     '/news': { component: renderNewsPage, requireAuth: false },
     '/admin/seasons': { component: renderAdminSeasonsPage, requireAuth: true, requireAdmin: true },
@@ -165,8 +167,8 @@ export async function renderCurrentPage() {
     }
 
     // Check season requirements for non-admins
-    // Teams and Standings are only visible if there is an active season OR user is admin
-    if ((window.location.pathname === '/teams' || window.location.pathname === '/standings') && !isAdmin()) {
+    // Teams, Standings, and Matches are only visible if there is an active season OR user is admin
+    if ((window.location.pathname === '/teams' || window.location.pathname === '/standings' || window.location.pathname === '/matches') && !isAdmin()) {
         const { getActiveSeason } = await import('./lib/supabaseClient.js');
         const activeSeason = await getActiveSeason();
         if (!activeSeason) {
