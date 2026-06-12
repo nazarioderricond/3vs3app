@@ -214,7 +214,24 @@
     display: none;
 }
 
-@media (max-width: 968px) {
+@media (min-width: 1151px) and (max-width: 1300px) {
+    .nav-link {
+        font-size: 1.1rem;
+        padding: 0.4rem 0.75rem;
+    }
+    .navbar-menu {
+        gap: var(--spacing-sm);
+    }
+    .user-info {
+        gap: var(--spacing-xs);
+    }
+    .btn-logout {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 1150px) {
     .navbar-toggle {
         display: flex;
     }
