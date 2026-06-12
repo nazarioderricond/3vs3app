@@ -536,6 +536,9 @@ export async function renderStandingsPage(params) {
   }
 
   // Realtime Subscription
+  // Clean up any existing subscription for this channel to prevent errors on page re-entry
+  supabase.removeChannel(supabase.channel('public:matches'));
+
   const subscription = supabase
     .channel('public:matches')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, async (payload) => {
