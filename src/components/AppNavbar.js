@@ -121,17 +121,22 @@ export async function renderNavbar() {
   // Back Button Logic
   const backBtn = nav.querySelector('#nav-back-btn');
   if (backBtn) {
+    console.log('AppNavbar: rendering back button. Pathname:', window.location.pathname);
     if (window.location.pathname === '/') {
+      console.log('AppNavbar: hiding back button (homepage)');
       backBtn.classList.add('hidden');
     } else {
+      console.log('AppNavbar: showing back button (subpage)');
       backBtn.classList.remove('hidden');
     }
 
     backBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      console.log('AppNavbar: back button clicked. history.length:', window.history.length);
       if (window.history.length > 1) {
         window.history.back();
       } else {
+        console.log('AppNavbar: fallback to home');
         window.history.pushState({}, '', '/');
         window.dispatchEvent(new Event('popstate'));
       }
