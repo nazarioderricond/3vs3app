@@ -76,7 +76,7 @@ export async function renderNavbar() {
             <span class="user-name">${currentProfile.first_name} ${currentProfile.last_name}</span>
             ${isAdmin() ? '<span class="badge badge-admin">Admin</span>' : '<span class="badge badge-user">User</span>'}
             <button class="btn-logout" id="logout-btn">Logout</button>
-            <button class="btn-logout" id="reset-btn" style="background: #dc2626; margin-left: 0.5rem;">RESET</button>
+            ${isAdmin() ? `<button class="btn-logout" id="reset-btn" style="background: #dc2626; margin-left: 0.5rem;">RESET</button>` : ''}
           </div>
         ` : ''}
       </div>
