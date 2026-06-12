@@ -15,10 +15,15 @@ export async function renderNavbar() {
 
   const navHTML = `
     <div class="navbar-container">
-      <div class="navbar-logo">
-        <a href="/" data-link>
-          <img src="/assets/logo_final.png" alt="3vs3 Ischitella" class="logo-img">
-        </a>
+      <div class="navbar-brand-group" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+        <button id="nav-back-btn" class="btn-back hidden" title="Torna indietro">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </button>
+        <div class="navbar-logo">
+          <a href="/" data-link>
+            <img src="/assets/logo_final.png" alt="3vs3 Ischitella" class="logo-img">
+          </a>
+        </div>
       </div>
       
       <div class="navbar-menu">
@@ -110,6 +115,26 @@ export async function renderNavbar() {
       sessionStorage.clear();
       await signOut();
       window.location.reload();
+    });
+  }
+
+  // Back Button Logic
+  const backBtn = nav.querySelector('#nav-back-btn');
+  if (backBtn) {
+    if (window.location.pathname === '/') {
+      backBtn.classList.add('hidden');
+    } else {
+      backBtn.classList.remove('hidden');
+    }
+
+    backBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.history.pushState({}, '', '/');
+        window.dispatchEvent(new Event('popstate'));
+      }
     });
   }
 
