@@ -22,10 +22,16 @@ jobs:
       - name: Ping Supabase to prevent sleep
         run: |
           echo "Pinging Supabase REST API to prevent pausing due to inactivity..."
+          # Generate a random UUID to bypass Cloudflare CDN cache and force a real database query
+          RANDOM_UUID=$(cat /proc/sys/kernel/random/uuid || echo "00000000-0000-0000-0000-000000000000")
+          echo "Bypassing cache with UUID: $RANDOM_UUID"
+          
           # Capture status code and handle network failures cleanly
-          if ! STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "https://etbpjlpbzvqcpphsywgu.supabase.co/rest/v1/seasons?select=*&limit=1" \
+          if ! STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "https://etbpjlpbzvqcpphsywgu.supabase.co/rest/v1/seasons?select=*&id=eq.${RANDOM_UUID}" \
           -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM" \
-          -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM"); then
+          -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM" \
+          -H "Cache-Control: no-cache" \
+          -H "Pragma: no-cache"); then
             echo "Error: Could not reach Supabase host. The project might be paused or deleted."
             STATUS="FAILED"
           fi
