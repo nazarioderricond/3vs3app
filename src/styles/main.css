@@ -408,6 +408,20 @@ body {
   border: 1px solid var(--color-yellow);
 }
 
+.badge-beta {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--color-yellow);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+  display: inline-block;
+}
+
 /* ============================================
    UTILITY CLASSES
    ============================================ */

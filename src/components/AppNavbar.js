@@ -24,6 +24,7 @@ export async function renderNavbar() {
             <img src="/assets/logo_final.png" alt="3vs3 Ischitella" class="logo-img">
           </a>
         </div>
+        <span class="badge-beta">Beta</span>
       </div>
       
       <div class="navbar-menu">

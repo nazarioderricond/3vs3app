@@ -9,7 +9,10 @@ export function renderRegisterPage() {
     <div class="auth-container">
       <div class="auth-card glass-card">
         <div class="auth-header text-center">
-          <img src="/assets/logo_final.png" alt="3vs3 Ischitella" class="logo-blended">
+          <div style="position: relative; display: inline-block;">
+            <img src="/assets/logo_final.png" alt="3vs3 Ischitella" class="logo-blended">
+            <span class="badge-beta" style="position: absolute; bottom: -5px; right: -5px; transform: translate(20%, 20%); z-index: 10;">Beta</span>
+          </div>
           <p class="mt-sm text-white">Crea il tuo account</p>
         </div>
         
