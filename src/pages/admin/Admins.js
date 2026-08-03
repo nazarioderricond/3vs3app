@@ -48,6 +48,9 @@ export async function renderAdminAdminsPage() {
     return page;
   }
 
+  // Local state list to maintain changes through searches
+  let profilesList = profiles || [];
+
   const renderUsers = (users) => {
     const tbody = page.querySelector('#users-table-body');
     if (users.length === 0) {
@@ -86,25 +89,26 @@ export async function renderAdminAdminsPage() {
     // Add event listeners
     tbody.querySelectorAll('.role-toggle-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const userId = e.target.dataset.userId;
-        const currentRole = e.target.dataset.currentRole;
+        const userId = e.currentTarget.dataset.userId;
+        const currentRole = e.currentTarget.dataset.currentRole;
         const newRole = currentRole === 'admin' ? 'user' : 'admin';
 
         if (confirm(`Sei sicuro di voler cambiare il ruolo di questo utente in ${newRole.toUpperCase()}?`)) {
           try {
-            const { error } = await supabase
-              .from('profiles')
-              .update({ role: newRole })
-              .eq('id', userId);
+            // Use secure SECURITY DEFINER RPC to bypass RLS restrictions
+            const { error: rpcError } = await supabase.rpc('update_user_role', {
+              target_user_id: userId,
+              new_role: newRole
+            });
 
-            if (error) throw error;
+            if (rpcError) throw rpcError;
 
-            // Refresh list
-            const updatedUsers = profiles.map(p => {
+            // Refresh list in local state
+            profilesList = profilesList.map(p => {
               if (p.id === userId) return { ...p, role: newRole };
               return p;
             });
-            renderUsers(updatedUsers);
+            renderUsers(profilesList);
           } catch (err) {
             alert('Errore: ' + err.message);
           }
@@ -113,19 +117,20 @@ export async function renderAdminAdminsPage() {
     });
   };
 
-  renderUsers(profiles);
+  renderUsers(profilesList);
 
   // Search functionality
   const searchInput = page.querySelector('#user-search');
   searchInput.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
-    const filtered = profiles.filter(user =>
+    const filtered = profilesList.filter(user =>
       user.first_name.toLowerCase().includes(term) ||
       user.last_name.toLowerCase().includes(term) ||
       (user.email && user.email.toLowerCase().includes(term))
     );
     renderUsers(filtered);
   });
+
 
   return page;
 }
