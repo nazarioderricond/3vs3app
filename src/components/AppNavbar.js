@@ -1,4 +1,4 @@
-import { currentUser, currentProfile, signOut, isAdmin, getActiveSeason } from '../lib/supabaseClient.js';
+import { currentProfile, signOut, isAdmin, getActiveSeason } from '../lib/supabaseClient.js';
 // import { navigateTo } from '../application.js'; // Removed to break circular dependency
 
 export async function renderNavbar() {
@@ -70,7 +70,7 @@ export async function renderNavbar() {
         ` : ''}
       </div>
       
-        <!-- Desktop User Controls (Hidden on Mobile via CSS) -->
+      <!-- Desktop User Controls (Hidden on Mobile via CSS) -->
       <div class="navbar-user desktop-user-controls">
         ${currentProfile ? `
           <div class="user-info">
@@ -83,11 +83,6 @@ export async function renderNavbar() {
             ${isAdmin() ? '<span class="badge badge-admin">Admin</span>' : '<span class="badge badge-user">User</span>'}
             <button class="btn-logout" id="logout-btn">Logout</button>
             ${isAdmin() ? `<button class="btn-logout" id="reset-btn" style="background: #dc2626; margin-left: 0.5rem;">RESET</button>` : ''}
-          </div>
-        ` : !currentUser ? `
-          <!-- Beta mode: guest user indicator -->
-          <div class="user-info">
-            <span class="badge badge-user" style="opacity: 0.7;">Beta Tester</span>
           </div>
         ` : ''}
       </div>
