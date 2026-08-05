@@ -109,40 +109,73 @@ export async function renderAdminTeamsPage() {
         </div>
       </form>
     </div>
+
+    <!-- Delete confirmation modal -->
+    <div id="delete-modal" class="admin-modal-overlay" style="display: none;">
+      <div class="admin-modal-card glass-card">
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+          <h3 style="color: var(--color-yellow); margin-bottom: 0.5rem;">Eliminare questa squadra?</h3>
+          <p id="delete-team-name" style="color: rgba(255,255,255,0.7); font-size: 0.95rem;"></p>
+        </div>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem; text-align: center; margin-bottom: 1.25rem;">
+          Questa azione è irreversibile. Verranno rimossi anche giocatori e assegnazioni girone collegati.
+        </p>
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn btn-secondary" id="delete-cancel-btn" style="flex: 1;">Annulla</button>
+          <button class="btn" id="delete-confirm-btn" style="flex: 1; background: #dc2626; border-color: #991b1b; color: white; font-weight: 700;">Elimina</button>
+        </div>
+      </div>
+    </div>
     
     <div class="teams-list grid grid-3">
       ${teams && teams.length > 0 ? teams.map(team => `
-        <div class="card">
-          ${team.logo_url ? `
-            <div class="team-logo-container">
-              <img src="${team.logo_url}" alt="${team.name}" class="team-logo">
+        <div class="card admin-team-card">
+          <!-- Card header with logo and info -->
+          <div class="admin-team-card-header">
+            ${team.logo_url ? `
+              <div class="team-logo-container">
+                <img src="${team.logo_url}" alt="${team.name}" class="team-logo">
+              </div>
+            ` : `
+              <div class="team-logo-container" style="display: flex; align-items: center; justify-content: center; background: rgba(255,215,0,0.08); border-radius: 12px; width: 80px; height: 80px; margin: 0 auto;">
+                <span style="font-size: 2rem; opacity: 0.4;">⚽</span>
+              </div>
+            `}
+            
+            <h3 class="text-center mt-md">${team.name}</h3>
+            
+            <div class="admin-team-card-badges">
+              <span class="admin-team-badge admin-team-badge-category">${team.category || 'Nessuna categoria'}</span>
+              ${team.team_groups && team.team_groups.length > 0 ? `
+                <span class="admin-team-badge admin-team-badge-group">${team.team_groups[0].group.name}</span>
+              ` : `
+                <span class="admin-team-badge admin-team-badge-nogroup">Nessun girone</span>
+              `}
             </div>
-          ` : ''}
-          
-          <h3 class="text-center mt-md">${team.name}</h3>
-          <p class="text-center text-muted text-sm">${team.category || 'Nessuna categoria'}</p>
-          
-          ${team.team_groups && team.team_groups.length > 0 ? `
-            <p class="text-center text-yellow mt-sm" style="font-size: 0.875rem;">
-              ${team.team_groups[0].group.name}
-            </p>
-          ` : `
-            <p class="text-center mt-sm" style="font-size: 0.875rem; opacity: 0.7;">
-              Nessun girone assegnato
-            </p>
-          `}
-          
-          <div class="team-actions mt-md" style="display: flex; gap: 0.5rem; align-items: center;">
-            <select class="group-select" data-team-id="${team.id}" data-current-group="${team.team_groups[0]?.group.id || ''}" style="flex: 1;">
-              <option value="">Cambia girone...</option>
-              ${groups ? groups.map(group => `
-                <option value="${group.id}" ${team.team_groups[0]?.group.id === group.id ? 'selected' : ''}>
-                  ${group.name}
-                </option>
-              `).join('') : ''}
-            </select>
-            <button class="btn btn-danger delete-team-btn" data-team-id="${team.id}" title="Elimina Squadra" style="padding: 0.5rem; background: #dc2626; border-color: #991b1b; color: white;">
-              🗑️
+          </div>
+
+          <!-- Card actions -->
+          <div class="admin-team-card-actions">
+            <div class="admin-team-action-row">
+              <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); margin-bottom: 0.25rem; display: block;">Girone</label>
+              <select class="group-select" data-team-id="${team.id}" data-current-group="${team.team_groups[0]?.group.id || ''}">
+                <option value="">Cambia girone...</option>
+                ${groups ? groups.map(group => `
+                  <option value="${group.id}" ${team.team_groups[0]?.group.id === group.id ? 'selected' : ''}>
+                    ${group.name}
+                  </option>
+                `).join('') : ''}
+              </select>
+            </div>
+            <button class="btn-delete-team delete-team-btn" data-team-id="${team.id}" data-team-name="${team.name}" title="Elimina squadra">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <span>Elimina</span>
             </button>
           </div>
         </div>
@@ -302,6 +335,78 @@ export async function renderAdminTeamsPage() {
         alert('Errore: ' + error.message);
       }
     });
+  });
+
+  // ── DELETE TEAM LOGIC ──────────────────────────────────────────────────────
+  const deleteModal = page.querySelector('#delete-modal');
+  const deleteTeamNameEl = page.querySelector('#delete-team-name');
+  const deleteCancelBtn = page.querySelector('#delete-cancel-btn');
+  const deleteConfirmBtn = page.querySelector('#delete-confirm-btn');
+  let teamIdToDelete = null;
+
+  // Open modal on delete button click
+  const deleteButtons = page.querySelectorAll('.delete-team-btn');
+  deleteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      teamIdToDelete = btn.dataset.teamId;
+      const teamName = btn.dataset.teamName;
+      deleteTeamNameEl.textContent = `"${teamName}"`;
+      deleteModal.style.display = 'flex';
+    });
+  });
+
+  // Close modal
+  deleteCancelBtn.addEventListener('click', () => {
+    deleteModal.style.display = 'none';
+    teamIdToDelete = null;
+  });
+
+  // Close modal on overlay click
+  deleteModal.addEventListener('click', (e) => {
+    if (e.target === deleteModal) {
+      deleteModal.style.display = 'none';
+      teamIdToDelete = null;
+    }
+  });
+
+  // Confirm deletion
+  deleteConfirmBtn.addEventListener('click', async () => {
+    if (!teamIdToDelete) return;
+
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.textContent = 'Eliminazione...';
+
+    try {
+      // 1. Remove team_groups associations
+      await supabase
+        .from('team_groups')
+        .delete()
+        .eq('team_id', teamIdToDelete);
+
+      // 2. Remove players associated with this team
+      await supabase
+        .from('players')
+        .delete()
+        .eq('team_id', teamIdToDelete);
+
+      // 3. Delete the team itself
+      const { error } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamIdToDelete);
+
+      if (error) throw error;
+
+      // Re-render page
+      const newPage = await renderAdminTeamsPage();
+      page.replaceWith(newPage);
+    } catch (error) {
+      alert('Errore durante l\'eliminazione: ' + error.message);
+      deleteConfirmBtn.disabled = false;
+      deleteConfirmBtn.textContent = 'Elimina';
+    }
   });
 
   return page;
