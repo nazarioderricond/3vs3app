@@ -23,15 +23,22 @@ import { renderAdminGroupsPage } from './pages/admin/Groups.js';
 // App state
 let currentRoute = window.location.pathname;
 
+// ─── BETA MODE ────────────────────────────────────────────────────────────────
+// Login is temporarily disabled for beta testing.
+// All non-admin routes are accessible without authentication.
+// Admin routes still require an authenticated admin account.
+// Set BETA_MODE = false to re-enable the login flow.
+const BETA_MODE = true;
+
 // Routes configuration
 const routes = {
-    '/': { component: renderHomePage, requireAuth: true },
-    '/login': { component: renderLoginPage, requireAuth: false },
-    '/register': { component: renderRegisterPage, requireAuth: false },
-    '/standings': { component: renderStandingsPage, requireAuth: true },
-    '/teams': { component: renderTeamsPage, requireAuth: true },
-    '/matches': { component: renderPublicMatchesPage, requireAuth: true },
-    '/history': { component: renderHistoryPage, requireAuth: true },
+    '/': { component: renderHomePage, requireAuth: false },
+    '/login': { component: renderLoginPage, requireAuth: false, betaHidden: true },
+    '/register': { component: renderRegisterPage, requireAuth: false, betaHidden: true },
+    '/standings': { component: renderStandingsPage, requireAuth: false },
+    '/teams': { component: renderTeamsPage, requireAuth: false },
+    '/matches': { component: renderPublicMatchesPage, requireAuth: false },
+    '/history': { component: renderHistoryPage, requireAuth: false },
     '/news': { component: renderNewsPage, requireAuth: false },
     '/admin/seasons': { component: renderAdminSeasonsPage, requireAuth: true, requireAdmin: true },
     '/admin/teams': { component: renderAdminTeamsPage, requireAuth: true, requireAdmin: true },
@@ -39,8 +46,8 @@ const routes = {
     '/admin/matches': { component: renderAdminMatchesPage, requireAuth: true, requireAdmin: true },
     '/admin/admins': { component: renderAdminAdminsPage, requireAuth: true, requireAdmin: true },
     '/admin/groups': { component: renderAdminGroupsPage, requireAuth: true, requireAdmin: true },
-    '/team/:id': { component: renderTeamDetailsPage, requireAuth: true },
-    '/match/:id': { component: renderMatchDetailsPage, requireAuth: true },
+    '/team/:id': { component: renderTeamDetailsPage, requireAuth: false },
+    '/match/:id': { component: renderMatchDetailsPage, requireAuth: false },
 };
 
 // Initialize app
@@ -143,7 +150,18 @@ export async function renderCurrentPage() {
 
     // Check authentication requirements
     if (route.requireAuth && !currentUser) {
-        navigateTo('/login');
+        if (BETA_MODE) {
+            // In beta mode, unauthenticated users are treated as regular users
+            // Only truly admin-required routes will block them (handled below)
+        } else {
+            navigateTo('/login');
+            return;
+        }
+    }
+
+    // In beta mode, hide login/register pages — redirect to home
+    if (BETA_MODE && route.betaHidden) {
+        navigateTo('/');
         return;
     }
 
@@ -162,7 +180,12 @@ export async function renderCurrentPage() {
 
     // Check admin requirements
     if (route.requireAdmin && !isAdmin()) {
-        navigateTo('/');
+        if (!currentUser) {
+            // In beta mode, unauthenticated user tries to access admin — redirect home
+            navigateTo('/');
+        } else {
+            navigateTo('/');
+        }
         return;
     }
 
@@ -179,8 +202,9 @@ export async function renderCurrentPage() {
     }
 
     // Render navbar
+    // In beta mode, always show the navbar (even for unauthenticated users)
     const navbarContainer = document.getElementById('navbar');
-    if (currentUser) {
+    if (currentUser || BETA_MODE) {
         const navbarElement = await renderNavbar();
         // Robust clearing: remove all children
         while (navbarContainer.firstChild) {
@@ -195,7 +219,8 @@ export async function renderCurrentPage() {
 
     // Check for zombie session (Auth OK but Profile Missing)
     // Only redirect if we are not already on the register page to avoid loops
-    if (currentUser && !currentProfile) {
+    // In beta mode, zombie session redirect is disabled (register is hidden)
+    if (!BETA_MODE && currentUser && !currentProfile) {
         if (window.location.pathname !== '/register') {
             console.log('Zombie session detected, redirecting to register');
             navigateTo('/register');
