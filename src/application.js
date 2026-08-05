@@ -5,6 +5,7 @@ import { renderNavbar } from './components/AppNavbar.js';
 // Page imports
 import { renderLoginPage } from './pages/Login.js';
 import { renderRegisterPage } from './pages/Register.js';
+import { renderResetPasswordPage } from './pages/ResetPassword.js';
 import { renderHomePage } from './pages/HomePage.js';
 import { renderStandingsPage } from './pages/Standings.js';
 import { renderTeamsPage } from './pages/Teams.js';
@@ -28,6 +29,7 @@ const routes = {
     '/': { component: renderHomePage, requireAuth: true },
     '/login': { component: renderLoginPage, requireAuth: false },
     '/register': { component: renderRegisterPage, requireAuth: false },
+    '/reset-password': { component: renderResetPasswordPage, requireAuth: false },
     '/standings': { component: renderStandingsPage, requireAuth: true },
     '/teams': { component: renderTeamsPage, requireAuth: true },
     '/matches': { component: renderPublicMatchesPage, requireAuth: true },
