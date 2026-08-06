@@ -98,6 +98,24 @@ export async function renderAdminPlayersPage() {
       </form>
     </div>
     
+    <!-- Delete confirmation modal -->
+    <div id="delete-player-modal" class="admin-modal-overlay" style="display: none;">
+      <div class="admin-modal-card glass-card">
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+          <h3 style="color: var(--color-yellow); margin-bottom: 0.5rem;">Eliminare questo giocatore?</h3>
+          <p id="delete-player-name-text" style="color: rgba(255,255,255,0.7); font-size: 0.95rem;"></p>
+        </div>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem; text-align: center; margin-bottom: 1.25rem;">
+          Questa azione è irreversibile. Verranno rimossi anche gli eventuali gol registrati per questo giocatore.
+        </p>
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn btn-secondary" id="delete-player-cancel-btn" style="flex: 1;">Annulla</button>
+          <button class="btn" id="delete-player-confirm-btn" style="flex: 1; background: #dc2626; border-color: #991b1b; color: white; font-weight: 700;">Elimina</button>
+        </div>
+      </div>
+    </div>
+
     <div class="teams-players-list">
       ${teams && teams.length > 0 ? teams.map(team => `
         <div class="glass-card mb-lg">
@@ -116,8 +134,8 @@ export async function renderAdminPlayersPage() {
                     <div class="player-number-badge">
                       ${player.jersey_number || '-'}
                     </div>
-                    <button class="btn-icon btn-danger delete-player-btn" data-player-id="${player.id}" title="Elimina giocatore">
-                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    <button class="btn-icon btn-danger delete-player-btn" data-player-id="${player.id}" data-player-name="${player.first_name} ${player.last_name}" title="Elimina giocatore">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     </button>
                   </div>
                   <div class="player-card-body">
@@ -177,7 +195,8 @@ export async function renderAdminPlayersPage() {
 
       if (error) throw error;
 
-      window.location.reload();
+      const newPage = await renderAdminPlayersPage();
+      page.replaceWith(newPage);
     } catch (error) {
       errorDiv.textContent = error.message;
       errorDiv.classList.remove('hidden');
@@ -186,27 +205,73 @@ export async function renderAdminPlayersPage() {
     }
   });
 
-  // Handle player deletion
+  // ── DELETE PLAYER LOGIC ────────────────────────────────────────────────────
+  const deletePlayerModal = page.querySelector('#delete-player-modal');
+  const deletePlayerNameText = page.querySelector('#delete-player-name-text');
+  const deletePlayerCancelBtn = page.querySelector('#delete-player-cancel-btn');
+  const deletePlayerConfirmBtn = page.querySelector('#delete-player-confirm-btn');
+  let playerIdToDelete = null;
+
+  // Open delete modal
   const deleteBtns = page.querySelectorAll('.delete-player-btn');
   deleteBtns.forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      if (!confirm('Sei sicuro di voler eliminare questo giocatore?')) return;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const button = e.target.closest('.delete-player-btn');
+      if (!button) return;
+      playerIdToDelete = button.dataset.playerId;
+      const playerName = button.dataset.playerName;
 
-      const playerId = e.target.dataset.playerId;
-
-      try {
-        const { error } = await supabase
-          .from('players')
-          .delete()
-          .eq('id', playerId);
-
-        if (error) throw error;
-
-        window.location.reload();
-      } catch (error) {
-        alert('Errore: ' + error.message);
-      }
+      deletePlayerNameText.textContent = `"${playerName}"`;
+      deletePlayerModal.style.display = 'flex';
     });
+  });
+
+  // Close modal on cancel
+  deletePlayerCancelBtn.addEventListener('click', () => {
+    deletePlayerModal.style.display = 'none';
+    playerIdToDelete = null;
+  });
+
+  // Close modal on overlay click
+  deletePlayerModal.addEventListener('click', (e) => {
+    if (e.target === deletePlayerModal) {
+      deletePlayerModal.style.display = 'none';
+      playerIdToDelete = null;
+    }
+  });
+
+  // Confirm delete action
+  deletePlayerConfirmBtn.addEventListener('click', async () => {
+    if (!playerIdToDelete) return;
+
+    deletePlayerConfirmBtn.disabled = true;
+    deletePlayerConfirmBtn.textContent = 'Eliminazione...';
+
+    try {
+      // 1. Delete associated match scorers records first (to prevent FK constraint failure)
+      await supabase
+        .from('match_scorers')
+        .delete()
+        .eq('player_id', playerIdToDelete);
+
+      // 2. Delete the player
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerIdToDelete);
+
+      if (error) throw error;
+
+      // Re-render page smoothly without full page refresh
+      const newPage = await renderAdminPlayersPage();
+      page.replaceWith(newPage);
+    } catch (error) {
+      alert('Errore durante l\'eliminazione: ' + error.message);
+      deletePlayerConfirmBtn.disabled = false;
+      deletePlayerConfirmBtn.textContent = 'Elimina';
+    }
   });
 
   return page;
