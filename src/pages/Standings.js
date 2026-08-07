@@ -419,13 +419,13 @@ export async function renderStandingsPage(params) {
                         <div class="match-date-small">
                           ${match.status === 'live' ? '<span style="color: var(--color-red); font-weight: bold;">🔴 LIVE</span>' : formatDate(match.match_date)}
                         </div>
-                        <div class="match-teams-score" style="justify-content: center; gap: 1rem;">
-                          <span class="${match.home_score > match.away_score ? 'text-yellow font-bold' : ''}" style="text-align: right; flex: 1;">${match.home_team.name}</span>
+                        <div class="match-teams-score">
+                          <span class="${match.home_score > match.away_score ? 'text-yellow font-bold' : ''}">${match.home_team.name}</span>
                           ${match.status === 'live' || match.home_score !== null ?
           `<span class="score-badge ${match.status === 'live' ? 'live-score' : ''}">${match.home_score !== null ? match.home_score : 0} - ${match.away_score !== null ? match.away_score : 0}</span>` :
           `<span class="vs-badge">VS</span>`
         }
-                          <span class="${match.away_score > match.home_score ? 'text-yellow font-bold' : ''}" style="text-align: left; flex: 1;">${match.away_team.name}</span>
+                          <span class="${match.away_score > match.home_score ? 'text-yellow font-bold' : ''}">${match.away_team.name}</span>
                         </div>
                       </a>
                     `).join('')}

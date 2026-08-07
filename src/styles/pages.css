@@ -781,25 +781,34 @@
     justify-content: space-between;
     align-items: center;
     font-weight: 500;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    width: 100%;
 }
 
 .score-badge {
     background: var(--color-black);
     color: var(--color-yellow);
-    padding: 0.1rem 0.5rem;
+    padding: 0.15rem 0.45rem;
     border-radius: var(--radius-sm);
     font-family: var(--font-display);
-    font-size: 1rem;
-    letter-spacing: 1px;
+    font-size: clamp(0.75rem, 2.2vw, 0.85rem);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
 }
 
 .vs-badge {
     background: rgba(255, 255, 255, 0.1);
     color: var(--color-white);
-    padding: 0.1rem 0.4rem;
+    padding: 0.15rem 0.45rem;
     border-radius: var(--radius-sm);
-    font-size: 0.7rem;
+    font-size: clamp(0.65rem, 1.8vw, 0.75rem);
     font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
 }
 
 .team-name-truncate {
@@ -857,36 +866,27 @@
     }
 }
 
-/* Ensure team names truncate in narrow columns */
+/* Ensure team names truncate in narrow columns while staying on one line */
 .match-teams-score span:first-child,
-.match-teams-score span:last-child,
-.match-teams-vs span:first-child,
-.match-teams-vs span:last-child {
+.match-teams-vs span:first-child {
+    flex: 1;
+    text-align: right;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 65px;
-    /* Tighter for ultra small screens */
+    font-size: clamp(0.7rem, 2.2vw, 0.85rem);
+    min-width: 0;
 }
 
-@media (min-width: 480px) {
-
-    .match-teams-score span:first-child,
-    .match-teams-score span:last-child,
-    .match-teams-vs span:first-child,
-    .match-teams-vs span:last-child {
-        max-width: 80px;
-    }
-}
-
-@media (min-width: 768px) {
-
-    .match-teams-score span:first-child,
-    .match-teams-score span:last-child,
-    .match-teams-vs span:first-child,
-    .match-teams-vs span:last-child {
-        max-width: 120px;
-    }
+.match-teams-score span:last-child,
+.match-teams-vs span:last-child {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(0.7rem, 2.2vw, 0.85rem);
+    min-width: 0;
 }
 
 /* Admin Teams Management Styles */
