@@ -169,14 +169,20 @@ export async function renderAdminTeamsPage() {
           <!-- Card actions -->
           <div class="admin-team-card-actions">
             <div class="admin-team-action-row">
-              <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); margin-bottom: 0.25rem; display: block;">Girone</label>
+              <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); margin-bottom: 0.25rem; display: block;">Girone (${team.category || 'Nessuna cat.'})</label>
               <select class="group-select" data-team-id="${team.id}" data-current-group="${team.team_groups[0]?.group.id || ''}">
-                <option value="">Cambia girone...</option>
-                ${groups ? groups.map(group => `
-                  <option value="${group.id}" ${team.team_groups[0]?.group.id === group.id ? 'selected' : ''}>
-                    ${group.name}
-                  </option>
-                `).join('') : ''}
+                <option value="">Nessun girone</option>
+                ${(() => {
+                  const categoryGroups = groups ? groups.filter(g => g.category === team.category) : [];
+                  if (categoryGroups.length === 0) {
+                    return `<option value="" disabled>Nessun girone (${team.category || 'Nessuna cat.'})</option>`;
+                  }
+                  return categoryGroups.map(group => `
+                    <option value="${group.id}" ${team.team_groups[0]?.group.id === group.id ? 'selected' : ''}>
+                      ${group.name}
+                    </option>
+                  `).join('');
+                })()}
               </select>
             </div>
             <button class="btn-delete-team delete-team-btn" data-team-id="${team.id}" data-team-name="${team.name}" title="Elimina squadra">
@@ -355,8 +361,6 @@ export async function renderAdminTeamsPage() {
       const currentGroupId = e.target.dataset.currentGroup;
       const newGroupId = e.target.value;
 
-      if (!newGroupId) return;
-
       try {
         // Remove from current group
         if (currentGroupId) {
@@ -367,13 +371,15 @@ export async function renderAdminTeamsPage() {
             .eq('group_id', currentGroupId);
         }
 
-        // Add to new group
-        await supabase
-          .from('team_groups')
-          .insert({
-            team_id: teamId,
-            group_id: newGroupId,
-          });
+        // Add to new group if selected
+        if (newGroupId) {
+          await supabase
+            .from('team_groups')
+            .insert({
+              team_id: teamId,
+              group_id: newGroupId,
+            });
+        }
 
         const newPage = await renderAdminTeamsPage();
         page.replaceWith(newPage);
