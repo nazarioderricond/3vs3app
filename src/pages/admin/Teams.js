@@ -128,9 +128,20 @@ export async function renderAdminTeamsPage() {
       </div>
     </div>
     
+    <!-- Filter by Category -->
+    <div class="category-tabs-container mb-lg" style="display: flex; justify-content: center;">
+      <div class="category-tabs">
+        <button class="category-tab active" data-category="all">Tutte (${teams ? teams.length : 0})</button>
+        ${TOURNAMENT_CATEGORIES.map(cat => {
+          const count = teams ? teams.filter(t => t.category === cat).length : 0;
+          return `<button class="category-tab" data-category="${cat}">${cat} (${count})</button>`;
+        }).join('')}
+      </div>
+    </div>
+    
     <div class="teams-list grid grid-3">
       ${teams && teams.length > 0 ? teams.map(team => `
-        <div class="card admin-team-card">
+        <div class="card admin-team-card" data-category="${team.category || ''}">
           <!-- Card header with logo and info -->
           <div class="admin-team-card-header">
             ${team.logo_url ? `
@@ -180,8 +191,43 @@ export async function renderAdminTeamsPage() {
           </div>
         </div>
       `).join('') : '<p class="text-center">Nessuna squadra creata.</p>'}
+      <p id="no-teams-msg" class="text-center hidden" style="grid-column: 1 / -1; padding: 2rem; color: rgba(255,255,255,0.6);">
+        Nessuna squadra presente in questa categoria.
+      </p>
     </div>
   `;
+
+  // Category Filter Tab Handler
+  const filterTabs = page.querySelectorAll('.category-tab');
+  const teamCards = page.querySelectorAll('.admin-team-card');
+  const noTeamsMsg = page.querySelector('#no-teams-msg');
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const selectedCat = tab.dataset.category;
+      let visibleCount = 0;
+
+      teamCards.forEach(card => {
+        if (selectedCat === 'all' || card.dataset.category === selectedCat) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      if (noTeamsMsg) {
+        if (visibleCount === 0) {
+          noTeamsMsg.classList.remove('hidden');
+        } else {
+          noTeamsMsg.classList.add('hidden');
+        }
+      }
+    });
+  });
 
   // Toggle form visibility
   const newTeamBtn = page.querySelector('#new-team-btn');
