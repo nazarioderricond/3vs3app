@@ -28,14 +28,11 @@ export async function renderNavbar() {
       </div>
       
       <div class="navbar-menu">
-        <a href="/" data-link class="nav-link">Home</a>
         ${showCompetitionLinks ? `
           <a href="/standings" data-link class="nav-link">Classifiche</a>
           <a href="/teams" data-link class="nav-link">Squadre</a>
           <a href="/matches" data-link class="nav-link">Partite</a>
         ` : ''}
-        <a href="/history" data-link class="nav-link">Storico</a>
-        <a href="/news" data-link class="nav-link">News</a>
         
         ${isAdmin() ? `
           <div class="nav-dropdown desktop-only">
