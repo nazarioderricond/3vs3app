@@ -218,6 +218,7 @@ export async function renderAdminMatchesPage() {
       div.innerHTML = `
         <select name="scorer-${teamType}" class="scorer-select" style="flex: 1;">
           <option value="">Seleziona giocatore...</option>
+          <option value="autogol" ${scorer && !scorer.player_id ? 'selected' : ''}>⚽ Autogol</option>
           ${players.map(p => `<option value="${p.id}" ${scorer && scorer.player_id === p.id ? 'selected' : ''}>${p.last_name} ${p.first_name}</option>`).join('')}
         </select>
         <input type="number" name="goals-${teamType}" class="scorer-goals" value="${scorer ? scorer.goals : 1}" min="1" style="width: 60px;">
@@ -339,7 +340,7 @@ export async function renderAdminMatchesPage() {
             scorersToInsert.push({
               match_id: matchId,
               team_id: formData.home_team_id,
-              player_id: select.value,
+              player_id: select.value === 'autogol' ? null : select.value,
               goals: parseInt(homeGoalInputs[i].value)
             });
           }
@@ -353,7 +354,7 @@ export async function renderAdminMatchesPage() {
             scorersToInsert.push({
               match_id: matchId,
               team_id: formData.away_team_id,
-              player_id: select.value,
+              player_id: select.value === 'autogol' ? null : select.value,
               goals: parseInt(awayGoalInputs[i].value)
             });
           }

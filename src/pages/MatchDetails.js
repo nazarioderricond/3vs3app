@@ -84,7 +84,7 @@ export async function renderMatchDetailsPage(params) {
           <div class="scorers-list text-right" style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 1rem;">
             ${homeScorers.length > 0 ? homeScorers.map(s => `
               <div class="scorer-item mb-sm">
-                <span class="font-bold">${s.player.first_name} ${s.player.last_name}</span>
+                <span class="font-bold">${s.player ? `${s.player.first_name} ${s.player.last_name}` : '⚽ Autogol'}</span>
                 ${s.goals > 1 ? `<span class="badge badge-admin ml-sm">x${s.goals}</span>` : '⚽'}
               </div>
             `).join('') : '<p class="text-muted text-sm">Nessun marcatore registrato</p>'}
@@ -95,7 +95,7 @@ export async function renderMatchDetailsPage(params) {
             ${awayScorers.length > 0 ? awayScorers.map(s => `
               <div class="scorer-item mb-sm">
                 ${s.goals > 1 ? `<span class="badge badge-admin mr-sm">x${s.goals}</span>` : '⚽'}
-                <span class="font-bold">${s.player.first_name} ${s.player.last_name}</span>
+                <span class="font-bold">${s.player ? `${s.player.first_name} ${s.player.last_name}` : '⚽ Autogol'}</span>
               </div>
             `).join('') : '<p class="text-muted text-sm">Nessun marcatore registrato</p>'}
           </div>
