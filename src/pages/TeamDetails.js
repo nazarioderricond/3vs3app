@@ -110,9 +110,7 @@ export async function renderTeamDetailsPage(params) {
         <div class="players-list">
           ${team.players && team.players.length > 0 ? team.players.map(player => `
             <div class="player-item">
-              <span class="player-number">${player.jersey_number || '-'}</span>
-              <span class="player-name">${player.first_name} ${player.last_name}</span>
-              <span class="player-role badge badge-user">${player.position || 'Giocatore'}</span>
+              <span class="player-name">👤 ${player.first_name} ${player.last_name}</span>
             </div>
           `).join('') : '<p class="text-muted">Nessun giocatore in rosa.</p>'}
         </div>

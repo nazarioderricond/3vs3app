@@ -62,8 +62,7 @@ export async function renderTeamsPage() {
               <div class="players-list">
                 ${team.players.map(player => `
                   <div class="player-item">
-                    ${player.jersey_number ? `<span class="player-number">#${player.jersey_number}</span>` : ''}
-                    <span class="player-name">${player.first_name} ${player.last_name}</span>
+                    <span class="player-name">👤 ${player.first_name} ${player.last_name}</span>
                   </div>
                 `).join('')}
               </div>

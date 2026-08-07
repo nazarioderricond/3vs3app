@@ -73,22 +73,6 @@ export async function renderAdminPlayersPage() {
           <input type="text" id="last-name" name="last-name" required>
         </div>
         
-        <div class="input-group">
-          <label for="jersey-number">Numero Maglia</label>
-          <input type="number" id="jersey-number" name="jersey-number" min="1" max="99">
-        </div>
-        
-        <div class="input-group">
-          <label for="position">Ruolo</label>
-          <select id="position" name="position">
-            <option value="">Seleziona ruolo...</option>
-            <option value="Portiere">Portiere</option>
-            <option value="Difensore">Difensore</option>
-            <option value="Centrocampista">Centrocampista</option>
-            <option value="Attaccante">Attaccante</option>
-          </select>
-        </div>
-        
         <div id="form-error" class="error-message hidden"></div>
         
         <div style="display: flex; gap: 1rem; margin-top: 1rem;">
@@ -129,19 +113,14 @@ export async function renderAdminPlayersPage() {
           ${team.players && team.players.length > 0 ? `
             <div class="players-grid">
               ${team.players.map(player => `
-                <div class="player-card">
-                  <div class="player-card-header">
-                    <div class="player-number-badge">
-                      ${player.jersey_number || '-'}
-                    </div>
-                    <button class="btn-icon btn-danger delete-player-btn" data-player-id="${player.id}" data-player-name="${player.first_name} ${player.last_name}" title="Elimina giocatore">
-                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                    </button>
+                <div class="player-card" style="display: flex; align-items: center; justify-content: space-between; flex-direction: row; padding: 0.85rem 1rem;">
+                  <div class="player-card-body" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.1rem;">👤</span>
+                    <h4 class="player-fullname" style="font-size: 1.05rem; margin: 0;">${player.first_name} ${player.last_name}</h4>
                   </div>
-                  <div class="player-card-body">
-                    <h4 class="player-fullname">${player.first_name} ${player.last_name}</h4>
-                    <span class="player-position">${player.position || 'Nessun ruolo'}</span>
-                  </div>
+                  <button class="btn-icon btn-danger delete-player-btn" data-player-id="${player.id}" data-player-name="${player.first_name} ${player.last_name}" title="Elimina giocatore">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                  </button>
                 </div>
               `).join('')}
             </div>
@@ -177,8 +156,6 @@ export async function renderAdminPlayersPage() {
       team_id: form['player-team'].value,
       first_name: form['first-name'].value,
       last_name: form['last-name'].value,
-      jersey_number: form['jersey-number'].value ? parseInt(form['jersey-number'].value) : null,
-      position: form.position.value || null,
     };
 
     const errorDiv = page.querySelector('#form-error');
