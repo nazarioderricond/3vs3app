@@ -410,10 +410,10 @@ export async function renderStandingsPage(params) {
     // Build Sub-section View Tabs
     viewFilterContainer.innerHTML = `
       <div class="category-tabs" style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.3);">
-        <button class="category-tab view-tab active" data-view="standings">🏆 Classifica Gironi</button>
-        <button class="category-tab view-tab" data-view="scorers">⚽ Classifica Marcatori</button>
-        ${categoryPlayoffMatches.length > 0 ? `<button class="category-tab view-tab" data-view="playoffs">🥇 Fase Finale</button>` : ''}
-        <button class="category-tab view-tab" data-view="all">📋 Mostra Tutto</button>
+        <button class="category-tab view-tab active" data-view="standings">Classifica Gironi</button>
+        <button class="category-tab view-tab" data-view="scorers">Classifica Marcatori</button>
+        ${categoryPlayoffMatches.length > 0 ? `<button class="category-tab view-tab" data-view="playoffs">Fase Finale</button>` : ''}
+        <button class="category-tab view-tab" data-view="all">Mostra Tutto</button>
       </div>
     `;
 

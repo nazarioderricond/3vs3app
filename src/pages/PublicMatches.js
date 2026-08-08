@@ -127,7 +127,6 @@ export async function renderPublicMatchesPage() {
       </div>
 
       <button type="button" id="btn-export-social" class="btn-export-social-link">
-        <span>📸</span>
         <span>Esporta Grafica Social</span>
       </button>
     </div>

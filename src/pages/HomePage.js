@@ -22,19 +22,19 @@ export async function renderHomePage() {
       <div class="grid ${showCompetitionLinks ? 'grid-3' : 'grid-1'}">
         ${showCompetitionLinks ? `
           <div class="card">
-            <h3>⚽ Classifiche</h3>
+            <h3>Classifiche</h3>
             <p class="mt-sm">Consulta le classifiche dei gironi e scopri chi è in testa!</p>
             <a href="/standings" data-link class="btn btn-primary mt-md">Vedi Classifiche</a>
           </div>
           
           <div class="card">
-            <h3>👥 Squadre</h3>
+            <h3>Squadre</h3>
             <p class="mt-sm">Scopri tutte le squadre partecipanti e i loro giocatori.</p>
             <a href="/teams" data-link class="btn btn-primary mt-md">Vedi Squadre</a>
           </div>
 
           <div class="card">
-            <h3>📅 Calendario</h3>
+            <h3>Calendario</h3>
             <p class="mt-sm">Consulta il calendario delle partite, orari e risultati dal vivo.</p>
             <a href="/matches" data-link class="btn btn-primary mt-md">Vedi Calendario</a>
           </div>
