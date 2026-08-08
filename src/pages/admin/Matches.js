@@ -387,22 +387,31 @@ export async function renderAdminMatchesPage() {
     e.preventDefault();
 
     const statusSelect = form['match-status'];
-    const homeScoreVal = form['home-score'].value === '' ? null : parseInt(form['home-score'].value);
-    const awayScoreVal = form['away-score'].value === '' ? null : parseInt(form['away-score'].value);
+    const homeScoreInput = form['home-score'];
+    const awayScoreInput = form['away-score'];
+    const homeScoreVal = (homeScoreInput && homeScoreInput.value !== '') ? parseInt(homeScoreInput.value) : null;
+    const awayScoreVal = (awayScoreInput && awayScoreInput.value !== '') ? parseInt(awayScoreInput.value) : null;
 
     let selectedStatus = statusSelect ? statusSelect.value : 'scheduled';
     if (selectedStatus === 'scheduled' && (homeScoreVal !== null || awayScoreVal !== null)) {
       selectedStatus = 'completed';
     }
 
+    const categorySelect = form['match-category'];
+    const dateInput = form['match-date'];
+    const homeSelect = form['home-team'];
+    const awaySelect = form['away-team'];
+    const phaseSelect = form['phase'] || form['match-phase'];
+    const groupSelect = form['group-id'];
+
     const formData = {
       season_id: currentSeason.id,
-      category: form['match-category'].value,
-      match_date: form['match-date'].value ? new Date(form['match-date'].value).toISOString() : null,
-      home_team_id: form['home-team'].value,
-      away_team_id: form['away-team'].value,
-      phase: form['match-phase'].value,
-      group_id: form['group-id'].value || null,
+      category: categorySelect ? categorySelect.value : '',
+      match_date: (dateInput && dateInput.value) ? new Date(dateInput.value).toISOString() : null,
+      home_team_id: homeSelect ? homeSelect.value : '',
+      away_team_id: awaySelect ? awaySelect.value : '',
+      phase: phaseSelect ? phaseSelect.value : 'group_stage',
+      group_id: (groupSelect && groupSelect.value) ? groupSelect.value : null,
       home_score: homeScoreVal,
       away_score: awayScoreVal,
       status: selectedStatus
