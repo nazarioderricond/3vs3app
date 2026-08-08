@@ -36,8 +36,8 @@ export async function renderMatchDetailsPage(params) {
     `)
     .eq('match_id', matchId);
 
-  const homeScorers = scorers?.filter(s => s.team_id === match.home_team_id) || [];
-  const awayScorers = scorers?.filter(s => s.team_id === match.away_team_id) || [];
+  const homeScorers = scorers?.filter(s => String(s.team_id) === String(match.home_team_id)) || [];
+  const awayScorers = scorers?.filter(s => String(s.team_id) === String(match.away_team_id)) || [];
 
   page.innerHTML = `
     <div class="glass-card text-center mb-xl">
@@ -58,7 +58,7 @@ export async function renderMatchDetailsPage(params) {
           <div style="font-size: 4rem; font-family: var(--font-display); color: var(--color-yellow);">
             ${match.home_score !== null ? match.home_score : '-'} : ${match.away_score !== null ? match.away_score : '-'}
           </div>
-          ${match.home_score === null ? '<span class="badge badge-admin">DA GIOCARE</span>' : '<span class="badge badge-user">FINALE</span>'}
+          ${match.status === 'scheduled' ? '<span class="badge badge-admin">DA GIOCARE</span>' : (match.status === 'live' ? '<span class="badge badge-danger">🔴 LIVE</span>' : '<span class="badge badge-user">FINALE</span>')}
         </div>
 
         <!-- Away Team -->
@@ -75,7 +75,7 @@ export async function renderMatchDetailsPage(params) {
       ` : ''}
     </div>
 
-    ${match.home_score !== null ? `
+    ${(match.home_score !== null || match.status === 'completed' || (scorers && scorers.length > 0)) ? `
       <div class="glass-card">
         <h3 class="text-center mb-lg border-bottom-yellow">Tabellino Marcatori</h3>
         

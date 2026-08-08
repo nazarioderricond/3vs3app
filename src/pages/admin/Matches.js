@@ -45,14 +45,15 @@ export async function renderAdminMatchesPage() {
     .eq('season_id', currentSeason.id)
     .order('name');
 
-  // Get existing matches
+  // Get existing matches with scorers
   let { data: matches } = await supabase
     .from('matches')
     .select(`
       *,
       home_team:teams!home_team_id(name),
       away_team:teams!away_team_id(name),
-      group:groups(name)
+      group:groups(name),
+      match_scorers(*, player:players(first_name, last_name))
     `)
     .eq('season_id', currentSeason.id)
     .order('match_date', { ascending: true });
@@ -119,7 +120,7 @@ export async function renderAdminMatchesPage() {
             </select>
         </div>
         
-        <div class="grid grid-2">
+        <div class="grid grid-3">
           <div class="input-group">
             <label for="home-score">Gol Casa</label>
             <input type="number" id="home-score" name="home-score" min="0">
@@ -128,6 +129,15 @@ export async function renderAdminMatchesPage() {
           <div class="input-group">
             <label for="away-score">Gol Ospite</label>
             <input type="number" id="away-score" name="away-score" min="0">
+          </div>
+
+          <div class="input-group">
+            <label for="match-status">Stato Partita</label>
+            <select id="match-status" name="match-status">
+              <option value="scheduled">Programmata</option>
+              <option value="live">🔴 In Corso (LIVE)</option>
+              <option value="completed">Terminata</option>
+            </select>
           </div>
         </div>
 
@@ -376,6 +386,15 @@ export async function renderAdminMatchesPage() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const statusSelect = form['match-status'];
+    const homeScoreVal = form['home-score'].value === '' ? null : parseInt(form['home-score'].value);
+    const awayScoreVal = form['away-score'].value === '' ? null : parseInt(form['away-score'].value);
+
+    let selectedStatus = statusSelect ? statusSelect.value : 'scheduled';
+    if (selectedStatus === 'scheduled' && (homeScoreVal !== null || awayScoreVal !== null)) {
+      selectedStatus = 'completed';
+    }
+
     const formData = {
       season_id: currentSeason.id,
       category: form['match-category'].value,
@@ -384,8 +403,9 @@ export async function renderAdminMatchesPage() {
       away_team_id: form['away-team'].value,
       phase: form['match-phase'].value,
       group_id: form['group-id'].value || null,
-      home_score: form['home-score'].value === '' ? null : parseInt(form['home-score'].value),
-      away_score: form['away-score'].value === '' ? null : parseInt(form['away-score'].value),
+      home_score: homeScoreVal,
+      away_score: awayScoreVal,
+      status: selectedStatus
     };
 
     const errorDiv = page.querySelector('#form-error');
@@ -657,6 +677,10 @@ export async function renderAdminMatchesPage() {
         form['phase'].value = data.phase;
         form['group-id'].value = data.group;
 
+        if (form['match-status']) {
+          form['match-status'].value = data.status || 'scheduled';
+        }
+
         if (data.date) {
           form['match-date'].value = formatForDateTimeInput(data.date);
         } else {
@@ -678,7 +702,7 @@ export async function renderAdminMatchesPage() {
   const subscription = supabase
     .channel('admin-matches')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, payload => {
-      console.log('Admin match update:', payload);
+      console.log('Admin Matches Page - update received:', payload);
       renderMatchesList();
     })
     .subscribe();
@@ -740,7 +764,12 @@ function renderMatchesHTML(matches) {
         </h3>
         
         <div class="grid grid-1 gap-md">
-          ${group.matches.map(match => `
+          ${group.matches.map(match => {
+            const homeScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.home_team_id)) || [];
+            const awayScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.away_team_id)) || [];
+            const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
+
+            return `
             <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)};">
               <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; opacity: 0.8;">
                 <span>${match.phase === 'group_stage' ? (match.group?.name || 'Gironi') : formatPhase(match.phase)}</span>
@@ -755,14 +784,30 @@ function renderMatchesHTML(matches) {
                   ${match.home_team?.name || 'TBD'}
                 </div>
                 
-                <div class="match-score" style="padding: 0 1rem; font-family: var(--font-display); font-size: 1.5rem; color: var(--color-yellow);">
-                  ${match.home_score !== null ? match.home_score : '-'} : ${match.away_score !== null ? match.away_score : '-'}
-                </div>
+                <a href="/match/${match.id}" style="text-decoration: none;" title="Vedi dettaglio partita">
+                  <div class="match-score" style="padding: 0 1rem; font-family: var(--font-display); font-size: 1.5rem; color: var(--color-yellow);">
+                    ${match.home_score !== null ? match.home_score : '-'} : ${match.away_score !== null ? match.away_score : '-'}
+                  </div>
+                </a>
                 
                 <div class="team-away" style="flex: 1; text-align: left; font-weight: bold;">
                   ${match.away_team?.name || 'TBD'}
                 </div>
               </div>
+
+              ${hasScorers ? `
+                <div class="match-scorers-summary mt-sm pt-xs" style="border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem;">
+                  <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                    <div style="flex: 1; text-align: right; color: var(--color-yellow);">
+                      ${homeScorers.map(s => `${s.player ? `${s.player.last_name} ${s.player.first_name}` : 'Autogol'}${s.goals > 1 ? ` (${s.goals})` : ''}`).join(', ')}
+                    </div>
+                    <div style="opacity: 0.5; font-size: 0.8rem;">⚽</div>
+                    <div style="flex: 1; text-align: left; color: var(--color-yellow);">
+                      ${awayScorers.map(s => `${s.player ? `${s.player.last_name} ${s.player.first_name}` : 'Autogol'}${s.goals > 1 ? ` (${s.goals})` : ''}`).join(', ')}
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
               
               <div class="match-actions text-center mt-md" style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">
                 ${match.status === 'scheduled' ? `
@@ -814,6 +859,7 @@ function renderMatchesHTML(matches) {
                   data-phase="${match.phase}"
                   data-group="${match.group_id || ''}"
                   data-category="${match.category || ''}"
+                  data-status="${match.status || 'scheduled'}"
                   title="Modifica Partita"
                   style="flex: 1; min-width: 80px;"
                 >
@@ -824,7 +870,8 @@ function renderMatchesHTML(matches) {
                 </button>
               </div>
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
     `;

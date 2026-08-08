@@ -45,14 +45,15 @@ export async function renderPublicMatchesPage() {
         return page;
     }
 
-    // Get all matches for the season
+    // Get all matches for the season with scorers
     let { data: allMatches } = await supabase
         .from('matches')
         .select(`
       *,
       home_team:teams!home_team_id(name),
       away_team:teams!away_team_id(name),
-      group:groups(name)
+      group:groups(name),
+      match_scorers(*, player:players(first_name, last_name))
     `)
         .eq('season_id', currentSeason.id)
         .order('match_date', { ascending: true });
@@ -218,7 +219,12 @@ export async function renderPublicMatchesPage() {
           </h2>
           
           <div class="grid grid-2-desktop gap-lg">
-            ${dateMatches.map(match => `
+            ${dateMatches.map(match => {
+                const homeScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.home_team_id)) || [];
+                const awayScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.away_team_id)) || [];
+                const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
+
+                return `
               <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)};">
                 <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; opacity: 0.9; align-items: center;">
                   <span style="font-weight: 600; color: var(--color-yellow); background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px;">
@@ -258,9 +264,24 @@ export async function renderPublicMatchesPage() {
                             ${match.away_team?.name || 'TBD'}
                         </div>
                     </div>
+
+                    ${hasScorers ? `
+                      <div class="match-scorers-summary mt-md pt-xs" style="border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem;">
+                        <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                          <div style="flex: 1; text-align: right; color: var(--color-yellow);">
+                            ${homeScorers.map(s => `${s.player ? `${s.player.last_name} ${s.player.first_name}` : 'Autogol'}${s.goals > 1 ? ` (${s.goals})` : ''}`).join(', ')}
+                          </div>
+                          <div style="opacity: 0.5; font-size: 0.8rem;">⚽</div>
+                          <div style="flex: 1; text-align: left; color: var(--color-yellow);">
+                            ${awayScorers.map(s => `${s.player ? `${s.player.last_name} ${s.player.first_name}` : 'Autogol'}${s.goals > 1 ? ` (${s.goals})` : ''}`).join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
                 </a>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         </div>
       `;
