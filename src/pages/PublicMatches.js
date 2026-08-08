@@ -112,7 +112,7 @@ export async function renderPublicMatchesPage() {
     page.innerHTML = `
     <h1 class="text-center mb-xl">Calendario Partite - Stagione ${currentSeason.year}</h1>
     
-    <div class="filter-container text-center mb-xl">
+    <div class="filter-container text-center mb-xl flex flex-col items-center gap-md">
       <div class="category-select-container" style="max-width: 400px; margin: 0 auto;">
         <label for="date-select" class="category-select-label">Data:</label>
         <select id="date-select" class="group-select">
@@ -121,6 +121,12 @@ export async function renderPublicMatchesPage() {
             <option value="${dateKey}">${matchesByDate[dateKey].title}</option>
           `).join('')}
         </select>
+      </div>
+
+      <div style="margin-top: 0.8rem;">
+        <button type="button" id="btn-export-social" class="btn btn-secondary" style="border-color: var(--color-yellow); color: var(--color-yellow); font-weight: 700; gap: 0.5rem; display: inline-flex; align-items: center; min-height: 44px; padding: 0.6rem 1.4rem;">
+          📲 Scarica Grafica Social (Story 1080x1350)
+        </button>
       </div>
     </div>
     
@@ -131,6 +137,40 @@ export async function renderPublicMatchesPage() {
 
     const dateSelect = page.querySelector('#date-select');
     const matchesContent = page.querySelector('#matches-content');
+    const btnExport = page.querySelector('#btn-export-social');
+
+    if (btnExport) {
+        btnExport.addEventListener('click', async () => {
+            const selectedDate = dateSelect.value;
+            let matchesToExport = [];
+            let dateTitle = 'Tutte le Partite';
+
+            if (selectedDate === 'all') {
+                matchesToExport = allMatches;
+            } else if (matchesByDate[selectedDate]) {
+                matchesToExport = matchesByDate[selectedDate].matches;
+                dateTitle = matchesByDate[selectedDate].title;
+            }
+
+            if (matchesToExport.length === 0) {
+                alert('Nessuna partita da esportare per questa data.');
+                return;
+            }
+
+            btnExport.disabled = true;
+            btnExport.textContent = '⏳ Generazione grafica...';
+
+            try {
+                await exportMatchesGraphic(dateTitle, matchesToExport);
+            } catch (err) {
+                console.error('Error generating social image:', err);
+                alert('Impossibile generare la grafica. Riprova.');
+            } finally {
+                btnExport.disabled = false;
+                btnExport.textContent = '📲 Scarica Grafica Social (Story 1080x1350)';
+            }
+        });
+    }
 
     function renderMatchesForDate(selectedDate) {
         if (!matchesContent) return;
@@ -146,9 +186,6 @@ export async function renderPublicMatchesPage() {
             const group = matchesByDate[dateKey];
             if (!group) return '';
 
-            // Further group matches by category to display them nicely ordered inside the date
-            // Optional enhancement, but straightforward listing is fine too.
-            // We will sort matches inside the date by time, and then by category.
             const dateMatches = group.matches.sort((a, b) => {
                 const timeA = new Date(a.match_date).getTime();
                 const timeB = new Date(b.match_date).getTime();
@@ -251,7 +288,6 @@ export async function renderPublicMatchesPage() {
 
             const updatedMatchId = payload.new.id;
 
-            // Fetch the full match data including teams
             const { data: fullMatch, error } = await supabase
                 .from('matches')
                 .select(`
@@ -265,16 +301,10 @@ export async function renderPublicMatchesPage() {
 
             if (error || !fullMatch) return;
 
-            // Update local array
             const matchIndex = allMatches.findIndex(m => m.id === fullMatch.id);
             if (matchIndex !== -1) {
                 allMatches[matchIndex] = fullMatch;
 
-                // We need to rebuild the grouping since status or date might have changed.
-                // For simplicity we just re-render the currently selected date.
-                // But first we must update the specific match inside the groups.
-
-                let dateKey = 'Data da definire';
                 let sortDate = '9999-99-99';
                 if (fullMatch.match_date) {
                     sortDate = fullMatch.match_date.split('T')[0];
@@ -288,15 +318,181 @@ export async function renderPublicMatchesPage() {
                 }
 
                 renderMatchesForDate(dateSelect.value);
-
-                // Flash effect
-                setTimeout(() => {
-                    const matchCards = page.querySelectorAll('.match-card');
-                    // Difficult to target by ID easily without adding data-id to HTML, but let's add visual feedback if possible
-                }, 100);
             }
         })
         .subscribe();
 
     return page;
 }
+
+// Canvas Graphic Generator for Social Export (Instagram Story / Post 1080x1350)
+async function exportMatchesGraphic(dateTitle, matches) {
+    const canvas = document.createElement('canvas');
+    const width = 1080;
+    const height = 1350;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Background Gradient
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+    bgGrad.addColorStop(0, '#0c1d13');
+    bgGrad.addColorStop(0.5, '#060d09');
+    bgGrad.addColorStop(1, '#020503');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Outer Decorative Gold Line
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(20, 20, width - 40, height - 40);
+
+    // Inner Corner Accents
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 4;
+    const cSize = 40;
+    ctx.beginPath(); ctx.moveTo(35, 35 + cSize); ctx.lineTo(35, 35); ctx.lineTo(35 + cSize, 35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(width - 35 - cSize, 35); ctx.lineTo(width - 35, 35); ctx.lineTo(width - 35, 35 + cSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(35, height - 35 - cSize); ctx.lineTo(35, height - 35); ctx.lineTo(35 + cSize, height - 35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(width - 35 - cSize, height - 35); ctx.lineTo(width - 35, height - 35); ctx.lineTo(width - 35, height - 35 - cSize); ctx.stroke();
+
+    // Draw Logo
+    let logoY = 70;
+    try {
+        const logoImg = new Image();
+        logoImg.src = '/assets/logo_final.png';
+        await new Promise((resolve) => {
+            logoImg.onload = resolve;
+            logoImg.onerror = resolve;
+        });
+        if (logoImg.complete && logoImg.naturalWidth !== 0) {
+            const logoW = 160;
+            const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
+            ctx.drawImage(logoImg, (width - logoW) / 2, logoY, logoW, logoH);
+            logoY += logoH + 20;
+        } else {
+            logoY += 30;
+        }
+    } catch (e) {
+        logoY += 30;
+    }
+
+    // Main Header Title
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText('TORNEO 3VS3 ISCHITELLA', width / 2, logoY);
+
+    // Date Badge
+    logoY += 45;
+    const dateText = (dateTitle || 'CALENDARIO PARTITE').toUpperCase();
+    ctx.font = 'bold 24px sans-serif';
+    const dateW = ctx.measureText(dateText).width + 60;
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+        ctx.roundRect((width - dateW) / 2, logoY - 28, dateW, 42, 21);
+    } else {
+        ctx.rect((width - dateW) / 2, logoY - 28, dateW, 42);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = '#000000';
+    ctx.fillText(dateText, width / 2, logoY);
+
+    // Render Match Cards
+    const startY = logoY + 55;
+    const availableHeight = height - startY - 90;
+    const maxMatches = Math.min(matches.length, 8);
+    const cardGap = 16;
+    const cardHeight = Math.min(110, Math.floor((availableHeight - (maxMatches * cardGap)) / maxMatches));
+
+    const cardW = width - 120;
+    const cardX = 60;
+
+    for (let i = 0; i < maxMatches; i++) {
+        const m = matches[i];
+        const cardY = startY + i * (cardHeight + cardGap);
+
+        // Card Fill
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(cardX, cardY, cardW, cardHeight, 12);
+        } else {
+            ctx.rect(cardX, cardY, cardW, cardHeight);
+        }
+        ctx.fill();
+
+        // Card Border
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Category & Time Header inside card
+        const timeStr = m.match_date ? new Date(m.match_date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+        const catStr = `${m.category || ''} • ${m.group?.name || formatPhase(m.phase)}`;
+
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '600 18px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(catStr.toUpperCase(), cardX + 24, cardY + 28);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText(timeStr, cardX + cardW - 24, cardY + 28);
+
+        // Score / VS Badge in Center
+        const midX = width / 2;
+        const midY = cardY + cardHeight - 30;
+
+        ctx.textAlign = 'center';
+        let scoreText = 'VS';
+        if (m.status === 'completed' || m.status === 'live' || m.home_score !== null) {
+            scoreText = `${m.home_score !== null ? m.home_score : 0} - ${m.away_score !== null ? m.away_score : 0}`;
+        }
+
+        ctx.font = 'bold 26px sans-serif';
+        const scoreW = Math.max(100, ctx.measureText(scoreText).width + 30);
+        ctx.fillStyle = scoreText === 'VS' ? 'rgba(255, 255, 255, 0.15)' : '#ffd700';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(midX - scoreW / 2, midY - 24, scoreW, 34, 8);
+        } else {
+            ctx.rect(midX - scoreW / 2, midY - 24, scoreW, 34);
+        }
+        ctx.fill();
+
+        ctx.fillStyle = scoreText === 'VS' ? '#ffffff' : '#000000';
+        ctx.fillText(scoreText, midX, midY);
+
+        // Home Team Name (Left of Score)
+        const homeName = (m.home_team?.name || 'TBD').toUpperCase();
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(homeName, midX - (scoreW / 2) - 20, midY);
+
+        // Away Team Name (Right of Score)
+        const awayName = (m.away_team?.name || 'TBD').toUpperCase();
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(awayName, midX + (scoreW / 2) + 20, midY);
+    }
+
+    // Footer Branding
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('3vs3ischitella.it  •  #3vs3Ischitella', width / 2, height - 45);
+
+    // Download PNG
+    const link = document.createElement('a');
+    const filenameDate = dateTitle ? dateTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'giornata';
+    link.download = `3vs3_Ischitella_${filenameDate}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+

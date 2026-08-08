@@ -32,6 +32,7 @@ export async function renderNavbar() {
           <a href="/standings" data-link class="nav-link">Classifiche</a>
           <a href="/teams" data-link class="nav-link">Squadre</a>
           <a href="/matches" data-link class="nav-link">Partite</a>
+          <a href="/rules" data-link class="nav-link">Regolamento</a>
         ` : ''}
         
         ${isAdmin() ? `

@@ -14,6 +14,7 @@ import { renderNewsPage } from './pages/News.js';
 import { renderTeamDetailsPage } from './pages/TeamDetails.js';
 import { renderMatchDetailsPage } from './pages/MatchDetails.js';
 import { renderPublicMatchesPage } from './pages/PublicMatches.js';
+import { renderRulesPage } from './pages/Rules.js';
 import { renderAdminSeasonsPage } from './pages/admin/Seasons.js';
 import { renderAdminTeamsPage } from './pages/admin/Teams.js';
 import { renderAdminPlayersPage } from './pages/admin/Players.js';
@@ -33,6 +34,7 @@ const routes = {
     '/standings': { component: renderStandingsPage, requireAuth: true },
     '/teams': { component: renderTeamsPage, requireAuth: true },
     '/matches': { component: renderPublicMatchesPage, requireAuth: true },
+    '/rules': { component: renderRulesPage, requireAuth: true },
     '/history': { component: renderHistoryPage, requireAuth: true },
     '/news': { component: renderNewsPage, requireAuth: false },
     '/admin/seasons': { component: renderAdminSeasonsPage, requireAuth: true, requireAdmin: true },
