@@ -327,11 +327,30 @@ export async function renderPublicMatchesPage() {
     return page;
 }
 
-// Canvas Graphic Generator for Social Export (Instagram Story / Post 1080x1350)
+// Canvas Graphic Generator for Social Export (Instagram Story / Post format)
 async function exportMatchesGraphic(dateTitle, matches) {
-    const canvas = document.createElement('canvas');
     const width = 1080;
-    const height = 1350;
+
+    // Sort matches chronologically by match_date
+    const sortedMatches = [...matches].sort((a, b) => {
+        const timeA = a.match_date ? new Date(a.match_date).getTime() : 0;
+        const timeB = b.match_date ? new Date(b.match_date).getTime() : 0;
+        return timeA - timeB;
+    });
+
+    const numMatches = sortedMatches.length;
+    const cardHeight = 98;
+    const cardGap = 14;
+    const cardW = width - 120;
+    const cardX = 60;
+
+    // Calculate dynamic canvas height to ensure NO match is ever cut off
+    const headerHeight = 300;
+    const matchesTotalHeight = numMatches * (cardHeight + cardGap);
+    const footerSpace = 90;
+    const height = Math.max(1350, headerHeight + matchesTotalHeight + footerSpace);
+
+    const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
@@ -359,7 +378,7 @@ async function exportMatchesGraphic(dateTitle, matches) {
     ctx.beginPath(); ctx.moveTo(width - 35 - cSize, height - 35); ctx.lineTo(width - 35, height - 35); ctx.lineTo(width - 35, height - 35 - cSize); ctx.stroke();
 
     // Draw Logo
-    let logoY = 70;
+    let logoY = 65;
     try {
         const logoImg = new Image();
         logoImg.src = '/assets/logo_final.png';
@@ -368,15 +387,15 @@ async function exportMatchesGraphic(dateTitle, matches) {
             logoImg.onerror = resolve;
         });
         if (logoImg.complete && logoImg.naturalWidth !== 0) {
-            const logoW = 160;
+            const logoW = 150;
             const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
             ctx.drawImage(logoImg, (width - logoW) / 2, logoY, logoW, logoH);
-            logoY += logoH + 20;
+            logoY += logoH + 18;
         } else {
-            logoY += 30;
+            logoY += 25;
         }
     } catch (e) {
-        logoY += 30;
+        logoY += 25;
     }
 
     // Main Header Title
@@ -402,18 +421,11 @@ async function exportMatchesGraphic(dateTitle, matches) {
     ctx.fillStyle = '#000000';
     ctx.fillText(dateText, width / 2, logoY);
 
-    // Render Match Cards
-    const startY = logoY + 55;
-    const availableHeight = height - startY - 90;
-    const maxMatches = Math.min(matches.length, 8);
-    const cardGap = 16;
-    const cardHeight = Math.min(110, Math.floor((availableHeight - (maxMatches * cardGap)) / maxMatches));
+    // Render ALL Match Cards (No hardcoded limit!)
+    const startY = logoY + 50;
 
-    const cardW = width - 120;
-    const cardX = 60;
-
-    for (let i = 0; i < maxMatches; i++) {
-        const m = matches[i];
+    for (let i = 0; i < numMatches; i++) {
+        const m = sortedMatches[i];
         const cardY = startY + i * (cardHeight + cardGap);
 
         // Card Fill
@@ -436,18 +448,18 @@ async function exportMatchesGraphic(dateTitle, matches) {
         const catStr = `${m.category || ''} • ${m.group?.name || formatPhase(m.phase)}`;
 
         ctx.fillStyle = '#ffd700';
-        ctx.font = '600 18px sans-serif';
+        ctx.font = '600 17px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(catStr.toUpperCase(), cardX + 24, cardY + 28);
+        ctx.fillText(catStr.toUpperCase(), cardX + 24, cardY + 26);
 
         ctx.textAlign = 'right';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText(timeStr, cardX + cardW - 24, cardY + 28);
+        ctx.font = 'bold 19px sans-serif';
+        ctx.fillText(timeStr, cardX + cardW - 24, cardY + 26);
 
         // Score / VS Badge in Center
         const midX = width / 2;
-        const midY = cardY + cardHeight - 30;
+        const midY = cardY + cardHeight - 28;
 
         ctx.textAlign = 'center';
         let scoreText = 'VS';
@@ -455,14 +467,14 @@ async function exportMatchesGraphic(dateTitle, matches) {
             scoreText = `${m.home_score !== null ? m.home_score : 0} - ${m.away_score !== null ? m.away_score : 0}`;
         }
 
-        ctx.font = 'bold 26px sans-serif';
-        const scoreW = Math.max(100, ctx.measureText(scoreText).width + 30);
+        ctx.font = 'bold 24px sans-serif';
+        const scoreW = Math.max(95, ctx.measureText(scoreText).width + 28);
         ctx.fillStyle = scoreText === 'VS' ? 'rgba(255, 255, 255, 0.15)' : '#ffd700';
         ctx.beginPath();
         if (ctx.roundRect) {
-            ctx.roundRect(midX - scoreW / 2, midY - 24, scoreW, 34, 8);
+            ctx.roundRect(midX - scoreW / 2, midY - 22, scoreW, 32, 8);
         } else {
-            ctx.rect(midX - scoreW / 2, midY - 24, scoreW, 34);
+            ctx.rect(midX - scoreW / 2, midY - 22, scoreW, 32);
         }
         ctx.fill();
 
@@ -473,22 +485,22 @@ async function exportMatchesGraphic(dateTitle, matches) {
         const homeName = (m.home_team?.name || 'TBD').toUpperCase();
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(homeName, midX - (scoreW / 2) - 20, midY);
+        ctx.font = 'bold 21px sans-serif';
+        ctx.fillText(homeName, midX - (scoreW / 2) - 18, midY);
 
         // Away Team Name (Right of Score)
         const awayName = (m.away_team?.name || 'TBD').toUpperCase();
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(awayName, midX + (scoreW / 2) + 20, midY);
+        ctx.font = 'bold 21px sans-serif';
+        ctx.fillText(awayName, midX + (scoreW / 2) + 18, midY);
     }
 
     // Footer Branding
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = '18px sans-serif';
-    ctx.fillText('3vs3ischitella.it  •  #3vs3Ischitella', width / 2, height - 45);
+    ctx.fillText('3vs3ischitella.it  •  #3vs3Ischitella', width / 2, height - 42);
 
     // Download PNG
     const link = document.createElement('a');
