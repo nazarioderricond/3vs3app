@@ -112,7 +112,7 @@ export async function renderPublicMatchesPage() {
     page.innerHTML = `
     <h1 class="text-center mb-xl">Calendario Partite - Stagione ${currentSeason.year}</h1>
     
-    <div class="filter-container text-center mb-xl flex flex-col items-center gap-md">
+    <div class="filter-container text-center mb-xl" style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
       <div class="category-select-container" style="max-width: 400px; margin: 0 auto;">
         <label for="date-select" class="category-select-label">Data:</label>
         <select id="date-select" class="group-select">
@@ -123,11 +123,10 @@ export async function renderPublicMatchesPage() {
         </select>
       </div>
 
-      <div style="margin-top: 0.8rem;">
-        <button type="button" id="btn-export-social" class="btn btn-secondary" style="border-color: var(--color-yellow); color: var(--color-yellow); font-weight: 700; gap: 0.5rem; display: inline-flex; align-items: center; min-height: 44px; padding: 0.6rem 1.4rem;">
-          📲 Scarica Grafica Social (Story 1080x1350)
-        </button>
-      </div>
+      <button type="button" id="btn-export-social" class="btn-export-social-link">
+        <span>📸</span>
+        <span>Esporta Grafica Social</span>
+      </button>
     </div>
     
     <div id="matches-content">
@@ -158,7 +157,7 @@ export async function renderPublicMatchesPage() {
             }
 
             btnExport.disabled = true;
-            btnExport.textContent = '⏳ Generazione grafica...';
+            btnExport.innerHTML = '<span>⏳</span><span>Generazione...</span>';
 
             try {
                 await exportMatchesGraphic(dateTitle, matchesToExport);
@@ -167,7 +166,7 @@ export async function renderPublicMatchesPage() {
                 alert('Impossibile generare la grafica. Riprova.');
             } finally {
                 btnExport.disabled = false;
-                btnExport.textContent = '📲 Scarica Grafica Social (Story 1080x1350)';
+                btnExport.innerHTML = '<span>📸</span><span>Esporta Grafica Social</span>';
             }
         });
     }

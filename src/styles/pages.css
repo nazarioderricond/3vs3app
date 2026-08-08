@@ -1061,3 +1061,35 @@
     font-weight: 700;
     transition: all 0.3s ease;
 }
+
+/* Compact Social Export Pill Button */
+.btn-export-social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--color-white);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    padding: 0.45rem 1.1rem;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.btn-export-social-link:hover {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: var(--color-yellow);
+    color: var(--color-yellow);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(255, 215, 0, 0.25);
+}
+
+.btn-export-social-link:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
