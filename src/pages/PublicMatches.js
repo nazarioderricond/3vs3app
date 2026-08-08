@@ -67,7 +67,7 @@ export async function renderPublicMatchesPage() {
         return page;
     }
 
-    // Group matches by date
+    // Group matches by date using local Italian timezone date
     const matchesByDate = {};
     allMatches.forEach(match => {
         let dateKey = 'Data da definire';
@@ -76,9 +76,12 @@ export async function renderPublicMatchesPage() {
         if (match.match_date) {
             const date = new Date(match.match_date);
             dateKey = date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            // Capitalize first letter
             dateKey = dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
-            sortDate = match.match_date.split('T')[0];
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            sortDate = `${year}-${month}-${day}`;
         }
 
         if (!matchesByDate[sortDate]) {
@@ -95,14 +98,14 @@ export async function renderPublicMatchesPage() {
     const sortedDates = Object.keys(matchesByDate).sort();
 
     // Find the closest date to today that has matches, or default to the first
-    const todayDateString = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let defaultDateString = sortedDates[0]; // fallback
     let futureDates = sortedDates.filter(d => d >= todayDateString && d !== '9999-99-99');
 
     if (futureDates.length > 0) {
         defaultDateString = futureDates[0];
     } else if (sortedDates.length > 0) {
-        // If all dates are in the past, get the most recent one
         const pastDates = sortedDates.filter(d => d < todayDateString && d !== '9999-99-99').sort().reverse();
         if (pastDates.length > 0) {
             defaultDateString = pastDates[0];
@@ -306,7 +309,8 @@ export async function renderPublicMatchesPage() {
 
                 let sortDate = '9999-99-99';
                 if (fullMatch.match_date) {
-                    sortDate = fullMatch.match_date.split('T')[0];
+                    const d = new Date(fullMatch.match_date);
+                    sortDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 }
 
                 if (matchesByDate[sortDate]) {
