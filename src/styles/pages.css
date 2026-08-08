@@ -1009,3 +1009,55 @@
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
     animation: fadeInUp 0.3s ease;
 }
+
+/* Custom Scorer Select Dropdown & Touch Controls */
+.scorer-select {
+    width: 100%;
+    padding: 0.75rem 2.2rem 0.75rem 0.9rem;
+    border: 1.5px solid rgba(255, 215, 0, 0.35);
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--color-white);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFD700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.1em;
+    min-height: 44px;
+}
+
+.scorer-select:focus {
+    outline: none;
+    background-color: rgba(20, 20, 20, 0.95);
+    border-color: var(--color-yellow);
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.25);
+}
+
+.scorer-select option {
+    background-color: #1a2e22;
+    color: #ffffff;
+    padding: 10px 14px;
+    font-weight: 600;
+}
+
+.scorer-row {
+    transition: all 0.2s ease-in-out;
+}
+
+.scorer-row:hover {
+    border-color: rgba(255, 215, 0, 0.5) !important;
+}
+
+.scorer-badge-counter {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}

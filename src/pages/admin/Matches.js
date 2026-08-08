@@ -179,7 +179,6 @@ export async function renderAdminMatchesPage() {
     return data || [];
   }
 
-  // Render scorer inputs
   async function renderScorerInputs(homeTeamId, awayTeamId, matchId = null) {
     const homePlayers = await getTeamPlayers(homeTeamId);
     const awayPlayers = await getTeamPlayers(awayTeamId);
@@ -195,50 +194,160 @@ export async function renderAdminMatchesPage() {
 
     const container = document.getElementById('scorers-container');
     container.innerHTML = `
-      <h4 class="mb-sm mt-md">Marcatori</h4>
-      <div class="grid grid-2">
+      <h4 class="mb-sm mt-md border-bottom-yellow pb-xs">Marcatori Partita</h4>
+      <div class="grid grid-2" style="gap: 1.5rem;">
         <div class="home-scorers">
-          <h5 class="text-yellow">Casa</h5>
+          <div class="flex items-center justify-between mb-sm">
+            <h5 class="text-yellow font-bold" style="margin: 0;">Casa</h5>
+            <span id="home-scorers-badge" class="scorer-badge-counter">0 gol</span>
+          </div>
           <div id="home-scorers-list"></div>
-          <button type="button" class="btn-small btn-secondary mt-sm" id="add-home-scorer">+ Aggiungi</button>
+          <button type="button" class="btn-small btn-secondary mt-sm w-full" id="add-home-scorer" style="min-height: 44px; font-weight: 600;">+ Aggiungi Marcatore Casa</button>
         </div>
         <div class="away-scorers">
-          <h5 class="text-yellow">Ospite</h5>
+          <div class="flex items-center justify-between mb-sm">
+            <h5 class="text-yellow font-bold" style="margin: 0;">Ospite</h5>
+            <span id="away-scorers-badge" class="scorer-badge-counter">0 gol</span>
+          </div>
           <div id="away-scorers-list"></div>
-          <button type="button" class="btn-small btn-secondary mt-sm" id="add-away-scorer">+ Aggiungi</button>
+          <button type="button" class="btn-small btn-secondary mt-sm w-full" id="add-away-scorer" style="min-height: 44px; font-weight: 600;">+ Aggiungi Marcatore Ospite</button>
         </div>
       </div>
     `;
+
+    const updateScorerCounters = () => {
+      const homeScoreVal = form['home-score'].value !== '' ? parseInt(form['home-score'].value) : null;
+      const awayScoreVal = form['away-score'].value !== '' ? parseInt(form['away-score'].value) : null;
+
+      let sumHome = 0;
+      document.querySelectorAll('#home-scorers-list .scorer-row').forEach(row => {
+        const sel = row.querySelector('.scorer-select');
+        const input = row.querySelector('.scorer-goals-input');
+        if (sel && sel.value && input) {
+          sumHome += (parseInt(input.value) || 0);
+        }
+      });
+
+      let sumAway = 0;
+      document.querySelectorAll('#away-scorers-list .scorer-row').forEach(row => {
+        const sel = row.querySelector('.scorer-select');
+        const input = row.querySelector('.scorer-goals-input');
+        if (sel && sel.value && input) {
+          sumAway += (parseInt(input.value) || 0);
+        }
+      });
+
+      const homeBadge = document.getElementById('home-scorers-badge');
+      const awayBadge = document.getElementById('away-scorers-badge');
+
+      if (homeBadge) {
+        if (homeScoreVal !== null) {
+          const isError = sumHome > homeScoreVal;
+          homeBadge.textContent = `${sumHome}/${homeScoreVal} gol`;
+          homeBadge.style.background = isError ? '#d32f2f' : (sumHome === homeScoreVal ? '#2e7d32' : 'rgba(255, 215, 0, 0.2)');
+          homeBadge.style.color = isError ? '#fff' : (sumHome === homeScoreVal ? '#fff' : 'var(--color-yellow)');
+          if (isError) homeBadge.textContent += ' ⚠️ Troppi';
+        } else {
+          homeBadge.textContent = `${sumHome} gol`;
+          homeBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+          homeBadge.style.color = 'var(--color-white)';
+        }
+      }
+
+      if (awayBadge) {
+        if (awayScoreVal !== null) {
+          const isError = sumAway > awayScoreVal;
+          awayBadge.textContent = `${sumAway}/${awayScoreVal} gol`;
+          awayBadge.style.background = isError ? '#d32f2f' : (sumAway === awayScoreVal ? '#2e7d32' : 'rgba(255, 215, 0, 0.2)');
+          awayBadge.style.color = isError ? '#fff' : (sumAway === awayScoreVal ? '#fff' : 'var(--color-yellow)');
+          if (isError) awayBadge.textContent += ' ⚠️ Troppi';
+        } else {
+          awayBadge.textContent = `${sumAway} gol`;
+          awayBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+          awayBadge.style.color = 'var(--color-white)';
+        }
+      }
+    };
 
     const addScorerRow = (teamType, players, scorer = null) => {
       const listId = teamType === 'home' ? 'home-scorers-list' : 'away-scorers-list';
       const list = document.getElementById(listId);
       const div = document.createElement('div');
-      div.className = 'scorer-row mb-sm flex gap-2';
+      div.className = 'scorer-row glass-card p-sm mb-sm flex flex-col gap-sm';
+      div.style.background = 'rgba(0, 0, 0, 0.4)';
+      div.style.border = '1px solid rgba(255, 215, 0, 0.2)';
+      div.style.borderRadius = 'var(--radius-md)';
+
       div.innerHTML = `
-        <select name="scorer-${teamType}" class="scorer-select" style="flex: 1;">
-          <option value="">Seleziona giocatore...</option>
-          <option value="autogol" ${scorer && !scorer.player_id ? 'selected' : ''}>⚽ Autogol</option>
-          ${players.map(p => `<option value="${p.id}" ${scorer && scorer.player_id === p.id ? 'selected' : ''}>${p.last_name} ${p.first_name}</option>`).join('')}
-        </select>
-        <input type="number" name="goals-${teamType}" class="scorer-goals" value="${scorer ? scorer.goals : 1}" min="1" style="width: 60px;">
-        <button type="button" class="btn-small btn-danger remove-scorer">X</button>
+        <div class="flex items-center justify-between gap-sm">
+          <select name="scorer-${teamType}" class="scorer-select flex-1">
+            <option value="">Seleziona giocatore...</option>
+            <option value="autogol" ${scorer && !scorer.player_id ? 'selected' : ''}>⚽ Autogol</option>
+            ${players.map(p => `<option value="${p.id}" ${scorer && scorer.player_id === p.id ? 'selected' : ''}>${p.last_name} ${p.first_name}</option>`).join('')}
+          </select>
+          <button type="button" class="btn-icon btn-danger remove-scorer" title="Rimuovi marcatore" style="min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border-radius: var(--radius-md); flex-shrink: 0;">
+            🗑️
+          </button>
+        </div>
+        
+        <div class="flex items-center justify-between gap-sm pt-xs" style="border-top: 1px solid rgba(255,255,255,0.08);">
+          <span class="text-sm font-bold text-muted">Gol assegnati:</span>
+          <div class="scorer-stepper flex items-center gap-xs">
+            <button type="button" class="btn-stepper btn-minus" style="min-width: 40px; min-height: 40px; font-weight: bold; font-size: 1.2rem; background: rgba(255,255,255,0.1); color: var(--color-white); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); cursor: pointer;">-</button>
+            <input type="number" name="goals-${teamType}" class="scorer-goals-input text-center" value="${scorer ? scorer.goals : 1}" min="1" max="99" style="width: 50px; min-height: 40px; font-weight: bold; font-size: 1.1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255,215,0,0.4); background: rgba(0,0,0,0.6); color: var(--color-yellow); text-align: center;">
+            <button type="button" class="btn-stepper btn-plus" style="min-width: 40px; min-height: 40px; font-weight: bold; font-size: 1.2rem; background: rgba(255,215,0,0.2); color: var(--color-yellow); border: 1px solid rgba(255,215,0,0.4); border-radius: var(--radius-sm); cursor: pointer;">+</button>
+          </div>
+        </div>
       `;
 
-      div.querySelector('.remove-scorer').addEventListener('click', () => div.remove());
+      const input = div.querySelector('.scorer-goals-input');
+      const btnMinus = div.querySelector('.btn-minus');
+      const btnPlus = div.querySelector('.btn-plus');
+      const select = div.querySelector('.scorer-select');
+
+      btnMinus.addEventListener('click', (e) => {
+        e.preventDefault();
+        let val = parseInt(input.value || 1);
+        if (val > 1) {
+          input.value = val - 1;
+          updateScorerCounters();
+        }
+      });
+
+      btnPlus.addEventListener('click', (e) => {
+        e.preventDefault();
+        let val = parseInt(input.value || 1);
+        input.value = val + 1;
+        updateScorerCounters();
+      });
+
+      input.addEventListener('input', () => updateScorerCounters());
+      select.addEventListener('change', () => updateScorerCounters());
+
+      div.querySelector('.remove-scorer').addEventListener('click', (e) => {
+        e.preventDefault();
+        div.remove();
+        updateScorerCounters();
+      });
+
       list.appendChild(div);
+      updateScorerCounters();
     };
 
-    // Add existing scorers
     existingScorers.filter(s => s.team_id === homeTeamId).forEach(s => addScorerRow('home', homePlayers, s));
     existingScorers.filter(s => s.team_id === awayTeamId).forEach(s => addScorerRow('away', awayPlayers, s));
 
-    // Add handlers for buttons
     document.getElementById('add-home-scorer').addEventListener('click', () => addScorerRow('home', homePlayers));
     document.getElementById('add-away-scorer').addEventListener('click', () => addScorerRow('away', awayPlayers));
+
+    const homeScoreInput = form['home-score'];
+    const awayScoreInput = form['away-score'];
+    if (homeScoreInput) homeScoreInput.addEventListener('input', updateScorerCounters);
+    if (awayScoreInput) awayScoreInput.addEventListener('input', updateScorerCounters);
+
+    updateScorerCounters();
   }
 
-  // Handle category change to filter teams and groups
   const categorySelect = page.querySelector('#match-category');
   const homeSelect = page.querySelector('#home-team');
   const awaySelect = page.querySelector('#away-team');
@@ -247,51 +356,33 @@ export async function renderAdminMatchesPage() {
   categorySelect.addEventListener('change', (e) => {
     const selectedCategory = e.target.value;
 
-    // Reset selects
-    homeSelect.innerHTML = '<option value="">Seleziona squadra...</option>';
-    awaySelect.innerHTML = '<option value="">Seleziona squadra...</option>';
-    groupSelect.innerHTML = '<option value="">Nessun girone</option>';
+    homeSelect.value = '';
+    awaySelect.value = '';
+    groupSelect.value = '';
 
-    if (!selectedCategory) {
-      homeSelect.disabled = true;
-      awaySelect.disabled = true;
-      groupSelect.disabled = true;
-      return;
-    }
+    const availableTeams = teams ? teams.filter(t => t.category === selectedCategory) : [];
+    homeSelect.innerHTML = `<option value="">Seleziona Squadra Casa...</option>` +
+      availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    awaySelect.innerHTML = `<option value="">Seleziona Squadra Ospite...</option>` +
+      availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
-    homeSelect.disabled = false;
-    awaySelect.disabled = false;
-    groupSelect.disabled = false;
+    const availableGroups = groups ? groups.filter(g => g.category === selectedCategory) : [];
+    groupSelect.innerHTML = `<option value="">Fase Finale / Nessun Girone</option>` +
+      availableGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
 
-    // Filter teams by category
-    const filteredTeams = teams ? teams.filter(t => t.category === selectedCategory) : [];
-    filteredTeams.forEach(team => {
-      homeSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
-      awaySelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
-    });
-
-    // Filter groups by category
-    const filteredGroups = groups ? groups.filter(g => g.category === selectedCategory) : [];
-    filteredGroups.forEach(group => {
-      groupSelect.innerHTML += `<option value="${group.id}">${group.name}</option>`;
-    });
+    document.getElementById('scorers-container').innerHTML = '';
   });
 
-  // Submit handler
-  // Submit handler
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const rawDateVal = form['match-date'].value;
-    const matchDateIso = rawDateVal ? new Date(rawDateVal).toISOString() : null;
 
     const formData = {
       season_id: currentSeason.id,
       category: form['match-category'].value,
+      match_date: form['match-date'].value ? new Date(form['match-date'].value).toISOString() : null,
       home_team_id: form['home-team'].value,
       away_team_id: form['away-team'].value,
-      match_date: matchDateIso,
-      phase: form['phase'].value,
+      phase: form['match-phase'].value,
       group_id: form['group-id'].value || null,
       home_score: form['home-score'].value === '' ? null : parseInt(form['home-score'].value),
       away_score: form['away-score'].value === '' ? null : parseInt(form['away-score'].value),
@@ -302,6 +393,35 @@ export async function renderAdminMatchesPage() {
     try {
       if (formData.home_team_id === formData.away_team_id) {
         throw new Error('Una squadra non può giocare contro se stessa');
+      }
+
+      let totalHomeScorerGoals = 0;
+      let totalAwayScorerGoals = 0;
+
+      const homeScorerSelects = document.querySelectorAll('select[name="scorer-home"]');
+      homeScorerSelects.forEach((select) => {
+        if (select.value) {
+          const row = select.closest('.scorer-row');
+          const goalInput = row ? row.querySelector('.scorer-goals-input') : null;
+          totalHomeScorerGoals += (goalInput ? parseInt(goalInput.value) || 0 : 0);
+        }
+      });
+
+      const awayScorerSelects = document.querySelectorAll('select[name="scorer-away"]');
+      awayScorerSelects.forEach((select) => {
+        if (select.value) {
+          const row = select.closest('.scorer-row');
+          const goalInput = row ? row.querySelector('.scorer-goals-input') : null;
+          totalAwayScorerGoals += (goalInput ? parseInt(goalInput.value) || 0 : 0);
+        }
+      });
+
+      if (formData.home_score !== null && totalHomeScorerGoals > formData.home_score) {
+        throw new Error(`I gol assegnati ai marcatori Casa (${totalHomeScorerGoals}) superano il risultato inserito (${formData.home_score})`);
+      }
+
+      if (formData.away_score !== null && totalAwayScorerGoals > formData.away_score) {
+        throw new Error(`I gol assegnati ai marcatori Ospite (${totalAwayScorerGoals}) superano il risultato inserito (${formData.away_score})`);
       }
 
       let matchId = editingMatchId;
@@ -325,37 +445,35 @@ export async function renderAdminMatchesPage() {
 
       if (error) throw error;
 
-      // Handle Scorers
       if (matchId) {
-        // Delete existing scorers first (simpler than update)
         await supabase.from('match_scorers').delete().eq('match_id', matchId);
 
         const scorersToInsert = [];
 
-        // Collect Home Scorers
-        const homeScorerSelects = document.querySelectorAll('select[name="scorer-home"]');
-        const homeGoalInputs = document.querySelectorAll('input[name="goals-home"]');
-        homeScorerSelects.forEach((select, i) => {
+        homeScorerSelects.forEach((select) => {
           if (select.value) {
+            const row = select.closest('.scorer-row');
+            const goalInput = row ? row.querySelector('.scorer-goals-input') : null;
+            const goals = goalInput ? parseInt(goalInput.value) || 1 : 1;
             scorersToInsert.push({
               match_id: matchId,
               team_id: formData.home_team_id,
               player_id: select.value === 'autogol' ? null : select.value,
-              goals: parseInt(homeGoalInputs[i].value)
+              goals: goals
             });
           }
         });
 
-        // Collect Away Scorers
-        const awayScorerSelects = document.querySelectorAll('select[name="scorer-away"]');
-        const awayGoalInputs = document.querySelectorAll('input[name="goals-away"]');
-        awayScorerSelects.forEach((select, i) => {
+        awayScorerSelects.forEach((select) => {
           if (select.value) {
+            const row = select.closest('.scorer-row');
+            const goalInput = row ? row.querySelector('.scorer-goals-input') : null;
+            const goals = goalInput ? parseInt(goalInput.value) || 1 : 1;
             scorersToInsert.push({
               match_id: matchId,
               team_id: formData.away_team_id,
               player_id: select.value === 'autogol' ? null : select.value,
-              goals: parseInt(awayGoalInputs[i].value)
+              goals: goals
             });
           }
         });
