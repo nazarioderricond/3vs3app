@@ -25,7 +25,7 @@ export async function renderTeamsPage() {
   }
 
   // Get teams with their groups and players
-  const { data: teams } = await supabase
+  const { data: rawTeams } = await supabase
     .from('teams')
     .select(`
       *,
@@ -36,6 +36,9 @@ export async function renderTeamsPage() {
     `)
     .eq('season_id', currentSeason.id)
     .order('name');
+
+  // Filter to show only teams that contain players
+  const teams = rawTeams ? rawTeams.filter(t => t.players && t.players.length > 0) : [];
 
   page.innerHTML = `
     <h1 class="text-center mb-xl">Squadre Stagione ${currentSeason.year}</h1>
