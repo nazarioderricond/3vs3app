@@ -149,17 +149,14 @@ export async function renderStandingsPage(params) {
     const categoryGroupStageMatches = groupStageMatches.filter(isMatchInCategory);
     const categoryPlayoffMatches = playoffMatches.filter(isMatchInCategory);
 
-    const playoffPhases = {
-      'round_16': [],
-      'quarterfinals': [],
-      'semifinals': [],
-      'final': []
-    };
-
+    // Group playoff matches dynamically by sub-phase name or formatted phase
+    const playoffPhasesMap = {};
     categoryPlayoffMatches.forEach(m => {
-      if (playoffPhases[m.phase]) {
-        playoffPhases[m.phase].push(m);
+      const title = m.group?.name || formatPhase(m.phase);
+      if (!playoffPhasesMap[title]) {
+        playoffPhasesMap[title] = [];
       }
+      playoffPhasesMap[title].push(m);
     });
 
     // Calculate Top Scorers for this category
@@ -359,42 +356,47 @@ export async function renderStandingsPage(params) {
         </div>
       </div>
 
-      <!-- PLAYOFF PHASE -->
-      ${categoryPlayoffMatches.length > 0 ? `
-        <div class="view-section" id="view-playoffs">
-          <div class="playoff-section mt-2xl">
-            <h2 class="text-center mb-xl" style="color: var(--color-black); background: var(--color-yellow); padding: 0.8rem 2rem; border-radius: 50px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); font-weight: 800;">Fase Finale - ${category}</h2>
-          
-            <div class="grid grid-2">
-              ${Object.entries(playoffPhases).map(([phase, matches]) => {
-                if (matches.length === 0) return '';
-                return `
-                  <div class="glass-card mb-lg">
-                    <h3 class="text-center mb-lg border-bottom-yellow">${formatPhase(phase)}</h3>
-                    <div class="matches-list-small">
-                      ${matches.map(match => `
-                        <a href="/match/${match.id}" class="match-row-small ${match.status === 'live' ? 'live-match-card' : ''}" style="text-decoration: none; color: inherit; ${match.status === 'live' ? 'border-left: 3px solid var(--color-red);' : ''}">
-                          <div class="match-date-small">
-                            ${match.status === 'live' ? '<span style="color: var(--color-red); font-weight: bold;">🔴 LIVE</span>' : formatDate(match.match_date)}
-                          </div>
-                          <div class="match-teams-score">
-                            <span class="${match.home_score > match.away_score ? 'text-yellow font-bold' : ''}">${match.home_team.name}</span>
-                            ${match.status === 'live' || match.home_score !== null ?
-                              `<span class="score-badge ${match.status === 'live' ? 'live-score' : ''}">${match.home_score !== null ? match.home_score : 0} - ${match.away_score !== null ? match.away_score : 0}</span>` :
-                              `<span class="vs-badge">VS</span>`
-                            }
-                            <span class="${match.away_score > match.home_score ? 'text-yellow font-bold' : ''}">${match.away_team.name}</span>
-                          </div>
-                        </a>
-                      `).join('')}
-                    </div>
+      <!-- PLAYOFF / FINAL PHASES SECTION -->
+      <div class="view-section" id="view-playoffs">
+        <div class="playoff-section mt-xl">
+          <h2 class="text-center mb-xl" style="color: var(--color-black); background: var(--color-yellow); padding: 0.8rem 2rem; border-radius: 50px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; font-size: 1.6rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); font-weight: 800;">Fasi Finali - ${category}</h2>
+        
+          ${Object.keys(playoffPhasesMap).length > 0 ? `
+            <div class="grid grid-2 gap-lg">
+              ${Object.entries(playoffPhasesMap).map(([title, matches]) => `
+                <div class="glass-card mb-lg">
+                  <div class="flex items-center justify-between border-bottom-yellow pb-xs mb-lg">
+                    <h3 class="m-0 text-yellow" style="font-size: 1.2rem; font-weight: 700;">${title}</h3>
+                    <span class="badge badge-admin" style="font-size: 0.8rem;">${category}</span>
                   </div>
-                `;
-              }).join('')}
+                  
+                  <div class="matches-list-small">
+                    ${matches.map(match => `
+                      <a href="/match/${match.id}" class="match-row-small ${match.status === 'live' ? 'live-match-card' : ''}" style="text-decoration: none; color: inherit; ${match.status === 'live' ? 'border-left: 3px solid var(--color-red);' : ''}">
+                        <div class="match-date-small">
+                          ${match.status === 'live' ? '<span style="color: var(--color-red); font-weight: bold;">🔴 LIVE</span>' : formatDate(match.match_date)}
+                        </div>
+                        <div class="match-teams-score">
+                          <span class="${match.home_score > match.away_score ? 'text-yellow font-bold' : ''}">${match.home_team?.name || 'TBD'}</span>
+                          ${match.status === 'live' || match.home_score !== null ?
+                            `<span class="score-badge ${match.status === 'live' ? 'live-score' : ''}">${match.home_score !== null ? match.home_score : 0} - ${match.away_score !== null ? match.away_score : 0}</span>` :
+                            `<span class="vs-badge">VS</span>`
+                          }
+                          <span class="${match.away_score > match.home_score ? 'text-yellow font-bold' : ''}">${match.away_team?.name || 'TBD'}</span>
+                        </div>
+                      </a>
+                    `).join('')}
+                  </div>
+                </div>
+              `).join('')}
             </div>
-          </div>
+          ` : `
+            <div class="glass-card text-center p-xl">
+              <p class="text-muted" style="font-size: 1.1rem; margin: 0;">Nessuna partita delle Fasi Finali programmata per la categoria ${category}.</p>
+            </div>
+          `}
         </div>
-      ` : ''}
+      </div>
     `;
 
     contentContainer.innerHTML = html;
@@ -403,8 +405,8 @@ export async function renderStandingsPage(params) {
     viewFilterContainer.innerHTML = `
       <div class="category-tabs" style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.3);">
         <button class="category-tab view-tab active" data-view="standings">Classifica Gironi</button>
+        <button class="category-tab view-tab" data-view="playoffs">Fasi Finali</button>
         <button class="category-tab view-tab" data-view="scorers">Classifica Marcatori</button>
-        ${categoryPlayoffMatches.length > 0 ? `<button class="category-tab view-tab" data-view="playoffs">Fase Finale</button>` : ''}
         <button class="category-tab view-tab" data-view="all">Mostra Tutto</button>
       </div>
     `;
@@ -429,8 +431,9 @@ export async function renderStandingsPage(params) {
       });
     });
 
-    // Trigger default selection (Classifica Gironi visible first)
-    const initialViewTab = viewFilterContainer.querySelector('.view-tab[data-view="standings"]');
+    // Trigger default selection (Classifica Gironi if available, else Fasi Finali)
+    const defaultView = categoryGroups.length > 0 ? 'standings' : (categoryPlayoffMatches.length > 0 ? 'playoffs' : 'standings');
+    const initialViewTab = viewFilterContainer.querySelector(`.view-tab[data-view="${defaultView}"]`);
     if (initialViewTab) {
       initialViewTab.click();
     }
