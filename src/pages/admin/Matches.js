@@ -483,14 +483,46 @@ export async function renderAdminMatchesPage() {
       const homeTeamId = await resolveTeamId(homeSelect, homeCustomInput);
       const awayTeamId = await resolveTeamId(awaySelect, awayCustomInput);
 
+      const finalSubPhases = {
+        'final_3rd': 'Finale 3° Posto',
+        'final_4th': 'Finale 4° Posto',
+        'final_5th': 'Finale 5° Posto',
+        'final_6th': 'Finale 6° Posto',
+        'final_7th': 'Finale 7° Posto'
+      };
+
+      let targetPhase = phaseSelect ? phaseSelect.value : 'group_stage';
+      let targetGroupId = (groupSelect && groupSelect.value) ? groupSelect.value : null;
+
+      if (finalSubPhases[targetPhase]) {
+        const groupName = finalSubPhases[targetPhase];
+        targetPhase = 'final';
+
+        let subGroup = groups ? groups.find(g => g.category === selectedCategory && g.name.toLowerCase() === groupName.toLowerCase()) : null;
+        if (!subGroup) {
+          const { data: newGrp, error: grpErr } = await supabase
+            .from('groups')
+            .insert({ season_id: currentSeason.id, name: groupName, category: selectedCategory })
+            .select()
+            .single();
+          if (!grpErr && newGrp) {
+            subGroup = newGrp;
+            if (groups) groups.push(newGrp);
+          }
+        }
+        if (subGroup) {
+          targetGroupId = subGroup.id;
+        }
+      }
+
       const formData = {
         season_id: currentSeason.id,
         category: selectedCategory,
         match_date: (dateInput && dateInput.value) ? new Date(dateInput.value).toISOString() : null,
         home_team_id: homeTeamId,
         away_team_id: awayTeamId,
-        phase: phaseSelect ? phaseSelect.value : 'group_stage',
-        group_id: (groupSelect && groupSelect.value) ? groupSelect.value : null,
+        phase: targetPhase,
+        group_id: targetGroupId,
         home_score: homeScoreVal,
         away_score: awayScoreVal,
         status: selectedStatus
@@ -759,7 +791,20 @@ export async function renderAdminMatchesPage() {
         form['away-team'].value = data.away;
         form['home-score'].value = data.homescore;
         form['away-score'].value = data.awayscore;
-        form['phase'].value = data.phase;
+
+        let phaseVal = data.phase || 'group_stage';
+        const groupName = data.groupname || (groups ? groups.find(g => g.id === data.group)?.name : '');
+
+        if (phaseVal === 'final' && groupName) {
+          const nameLower = groupName.toLowerCase();
+          if (nameLower.includes('7°') || nameLower.includes('7 posto')) phaseVal = 'final_7th';
+          else if (nameLower.includes('6°') || nameLower.includes('6 posto')) phaseVal = 'final_6th';
+          else if (nameLower.includes('5°') || nameLower.includes('5 posto')) phaseVal = 'final_5th';
+          else if (nameLower.includes('4°') || nameLower.includes('4 posto')) phaseVal = 'final_4th';
+          else if (nameLower.includes('3°') || nameLower.includes('3 posto')) phaseVal = 'final_3rd';
+        }
+
+        form['phase'].value = phaseVal;
         form['group-id'].value = data.group;
 
         if (form['match-status']) {
@@ -943,6 +988,7 @@ function renderMatchesHTML(matches) {
                   data-date="${match.match_date || ''}"
                   data-phase="${match.phase}"
                   data-group="${match.group_id || ''}"
+                  data-groupname="${match.group?.name || ''}"
                   data-category="${match.category || ''}"
                   data-status="${match.status || 'scheduled'}"
                   title="Modifica Partita"
