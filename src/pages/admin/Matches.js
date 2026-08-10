@@ -169,6 +169,13 @@ export async function renderAdminMatchesPage() {
   newMatchBtn.addEventListener('click', () => {
     editingMatchId = null;
     form.reset();
+    homeSelect.disabled = true;
+    awaySelect.disabled = true;
+    groupSelect.disabled = true;
+    homeSelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+    awaySelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+    groupSelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+    document.getElementById('scorers-container').innerHTML = '';
     matchForm.classList.remove('hidden');
     page.querySelector('h3').textContent = 'Inserisci Partita';
   });
@@ -366,9 +373,20 @@ export async function renderAdminMatchesPage() {
   categorySelect.addEventListener('change', (e) => {
     const selectedCategory = e.target.value;
 
-    homeSelect.value = '';
-    awaySelect.value = '';
-    groupSelect.value = '';
+    if (!selectedCategory) {
+      homeSelect.disabled = true;
+      awaySelect.disabled = true;
+      groupSelect.disabled = true;
+      homeSelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+      awaySelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+      groupSelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
+      document.getElementById('scorers-container').innerHTML = '';
+      return;
+    }
+
+    homeSelect.disabled = false;
+    awaySelect.disabled = false;
+    groupSelect.disabled = false;
 
     const availableTeams = teams ? teams.filter(t => t.category === selectedCategory) : [];
     homeSelect.innerHTML = `<option value="">Seleziona Squadra Casa...</option>` +
