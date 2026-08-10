@@ -1,13 +1,5 @@
 import { supabase } from '../lib/supabaseClient.js';
-import { TOURNAMENT_CATEGORIES } from '../lib/constants.js';
-
-const phaseLabels = {
-  'group_stage': 'Fase a Gironi',
-  'round_16': 'Ottavi di Finale',
-  'quarterfinals': 'Quarti di Finale',
-  'semifinals': 'Semifinali',
-  'final': 'Finale'
-};
+import { TOURNAMENT_CATEGORIES, PHASE_LABELS, formatPhase } from '../lib/constants.js';
 
 export async function renderStandingsPage(params) {
   const page = document.createElement('div');
@@ -378,7 +370,7 @@ export async function renderStandingsPage(params) {
                 if (matches.length === 0) return '';
                 return `
                   <div class="glass-card mb-lg">
-                    <h3 class="text-center mb-lg border-bottom-yellow">${phaseLabels[phase]}</h3>
+                    <h3 class="text-center mb-lg border-bottom-yellow">${formatPhase(phase)}</h3>
                     <div class="matches-list-small">
                       ${matches.map(match => `
                         <a href="/match/${match.id}" class="match-row-small ${match.status === 'live' ? 'live-match-card' : ''}" style="text-decoration: none; color: inherit; ${match.status === 'live' ? 'border-left: 3px solid var(--color-red);' : ''}">

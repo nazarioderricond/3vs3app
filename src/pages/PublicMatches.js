@@ -1,13 +1,5 @@
 import { supabase } from '../lib/supabaseClient.js';
-import { TOURNAMENT_CATEGORIES } from '../lib/constants.js';
-
-const phaseLabels = {
-    'group_stage': 'Fase a Gironi',
-    'round_16': 'Ottavi di Finale',
-    'quarterfinals': 'Quarti di Finale',
-    'semifinals': 'Semifinali',
-    'final': 'Finale'
-};
+import { TOURNAMENT_CATEGORIES, PHASE_LABELS, formatPhase } from '../lib/constants.js';
 
 function getStatusColor(status) {
     switch (status) {
@@ -15,10 +7,6 @@ function getStatusColor(status) {
         case 'completed': return 'var(--color-yellow)';
         default: return 'var(--color-muted)';
     }
-}
-
-function formatPhase(phase) {
-    return phaseLabels[phase] || phase;
 }
 
 export async function renderPublicMatchesPage() {

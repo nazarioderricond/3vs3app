@@ -1,6 +1,6 @@
 import { supabase, isAdmin } from '../../lib/supabaseClient.js';
 import { navigateTo } from '../../application.js';
-import { TOURNAMENT_CATEGORIES } from '../../lib/constants.js';
+import { TOURNAMENT_CATEGORIES, PHASE_LABELS, formatPhase } from '../../lib/constants.js';
 
 export async function renderAdminMatchesPage() {
   if (!isAdmin()) {
@@ -31,17 +31,16 @@ export async function renderAdminMatchesPage() {
     return page;
   }
 
-  // Get teams
-  const { data: teams } = await supabase
-    .from('teams')
-    .select('id, name, category')
-    .eq('season_id', currentSeason.id)
-    .order('name');
-
-  // Get groups
+  // Fetch groups for group select
   const { data: groups } = await supabase
     .from('groups')
-    .select('id, name, category')
+    .select('*')
+    .eq('season_id', currentSeason.id);
+
+  // Fetch all teams for team select
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('*')
     .eq('season_id', currentSeason.id)
     .order('name');
 
@@ -85,6 +84,7 @@ export async function renderAdminMatchesPage() {
             <select id="home-team" name="home-team" required disabled>
               <option value="">Seleziona prima una categoria</option>
             </select>
+            <input type="text" id="home-team-custom" name="home-team-custom" placeholder="es. 1ª Classificata Girone A" class="hidden mt-xs" style="width: 100%; border: 1px solid var(--color-yellow);">
           </div>
           
           <div class="input-group">
@@ -92,6 +92,7 @@ export async function renderAdminMatchesPage() {
             <select id="away-team" name="away-team" required disabled>
               <option value="">Seleziona prima una categoria</option>
             </select>
+            <input type="text" id="away-team-custom" name="away-team-custom" placeholder="es. 2ª Classificata Girone B" class="hidden mt-xs" style="width: 100%; border: 1px solid var(--color-yellow);">
           </div>
         </div>
 
@@ -108,7 +109,12 @@ export async function renderAdminMatchesPage() {
               <option value="round_16">Ottavi di Finale</option>
               <option value="quarterfinals">Quarti di Finale</option>
               <option value="semifinals">Semifinali</option>
-              <option value="final">Finale</option>
+              <option value="final">Finale 1°/2° Posto</option>
+              <option value="final_3rd">Finale 3° Posto</option>
+              <option value="final_4th">Finale 4° Posto</option>
+              <option value="final_5th">Finale 5° Posto</option>
+              <option value="final_6th">Finale 6° Posto</option>
+              <option value="final_7th">Finale 7° Posto</option>
             </select>
           </div>
         </div>
@@ -390,8 +396,10 @@ export async function renderAdminMatchesPage() {
 
     const availableTeams = teams ? teams.filter(t => t.category === selectedCategory) : [];
     homeSelect.innerHTML = `<option value="">Seleziona Squadra Casa...</option>` +
+      `<option value="custom">✏️ Inserisci descrizione libera...</option>` +
       availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     awaySelect.innerHTML = `<option value="">Seleziona Squadra Ospite...</option>` +
+      `<option value="custom">✏️ Inserisci descrizione libera...</option>` +
       availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
     const availableGroups = groups ? groups.filter(g => g.category === selectedCategory) : [];
@@ -399,6 +407,31 @@ export async function renderAdminMatchesPage() {
       availableGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
 
     document.getElementById('scorers-container').innerHTML = '';
+  });
+
+  const homeCustomInput = page.querySelector('#home-team-custom');
+  const awayCustomInput = page.querySelector('#away-team-custom');
+
+  homeSelect.addEventListener('change', () => {
+    if (homeSelect.value === 'custom') {
+      homeCustomInput.classList.remove('hidden');
+      homeCustomInput.required = true;
+    } else {
+      homeCustomInput.classList.add('hidden');
+      homeCustomInput.required = false;
+      homeCustomInput.value = '';
+    }
+  });
+
+  awaySelect.addEventListener('change', () => {
+    if (awaySelect.value === 'custom') {
+      awayCustomInput.classList.remove('hidden');
+      awayCustomInput.required = true;
+    } else {
+      awayCustomInput.classList.add('hidden');
+      awayCustomInput.required = false;
+      awayCustomInput.value = '';
+    }
   });
 
   form.addEventListener('submit', async (e) => {
@@ -417,27 +450,52 @@ export async function renderAdminMatchesPage() {
 
     const categorySelect = form['match-category'];
     const dateInput = form['match-date'];
-    const homeSelect = form['home-team'];
-    const awaySelect = form['away-team'];
     const phaseSelect = form['phase'] || form['match-phase'];
     const groupSelect = form['group-id'];
 
-    const formData = {
-      season_id: currentSeason.id,
-      category: categorySelect ? categorySelect.value : '',
-      match_date: (dateInput && dateInput.value) ? new Date(dateInput.value).toISOString() : null,
-      home_team_id: homeSelect ? homeSelect.value : '',
-      away_team_id: awaySelect ? awaySelect.value : '',
-      phase: phaseSelect ? phaseSelect.value : 'group_stage',
-      group_id: (groupSelect && groupSelect.value) ? groupSelect.value : null,
-      home_score: homeScoreVal,
-      away_score: awayScoreVal,
-      status: selectedStatus
-    };
+    const selectedCategory = categorySelect ? categorySelect.value : '';
 
     const errorDiv = page.querySelector('#form-error');
 
     try {
+      // Helper to get or create custom team placeholder
+      async function resolveTeamId(selectElem, customElem) {
+        if (selectElem.value === 'custom') {
+          const customName = customElem.value.trim();
+          if (!customName) throw new Error('Inserisci il nome/descrizione per la squadra');
+
+          const existing = teams.find(t => t.category === selectedCategory && t.name.toLowerCase() === customName.toLowerCase());
+          if (existing) return existing.id;
+
+          const { data: newTeam, error: createError } = await supabase
+            .from('teams')
+            .insert({ season_id: currentSeason.id, name: customName, category: selectedCategory })
+            .select()
+            .single();
+
+          if (createError) throw new Error('Errore creazione squadra: ' + createError.message);
+          teams.push(newTeam);
+          return newTeam.id;
+        }
+        return selectElem.value;
+      }
+
+      const homeTeamId = await resolveTeamId(homeSelect, homeCustomInput);
+      const awayTeamId = await resolveTeamId(awaySelect, awayCustomInput);
+
+      const formData = {
+        season_id: currentSeason.id,
+        category: selectedCategory,
+        match_date: (dateInput && dateInput.value) ? new Date(dateInput.value).toISOString() : null,
+        home_team_id: homeTeamId,
+        away_team_id: awayTeamId,
+        phase: phaseSelect ? phaseSelect.value : 'group_stage',
+        group_id: (groupSelect && groupSelect.value) ? groupSelect.value : null,
+        home_score: homeScoreVal,
+        away_score: awayScoreVal,
+        status: selectedStatus
+      };
+
       if (formData.home_team_id === formData.away_team_id) {
         throw new Error('Una squadra non può giocare contro se stessa');
       }
@@ -925,13 +983,3 @@ function getStatusColor(status) {
   }
 }
 
-function formatPhase(phase) {
-  const map = {
-    'group_stage': 'Gironi',
-    'round_16': 'Ottavi',
-    'quarterfinals': 'Quarti',
-    'semifinals': 'Semifinali',
-    'final': 'Finale'
-  };
-  return map[phase] || phase;
-}
