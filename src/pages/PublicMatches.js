@@ -216,7 +216,7 @@ export async function renderPublicMatchesPage() {
               <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)};">
                 <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; opacity: 0.9; align-items: center;">
                   <span style="font-weight: 600; color: var(--color-yellow); background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px;">
-                      ${match.category || 'N/A'} - ${match.phase === 'group_stage' ? (match.group?.name || 'Gironi') : formatPhase(match.phase)}
+                      ${match.category || 'N/A'} - ${match.group?.name || formatPhase(match.phase)}
                   </span>
                   <span>${match.match_date ? new Date(match.match_date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                   <span class="status-badge ${match.status === 'live' ? 'live-pulse' : ''}" style="color: ${getStatusColor(match.status)}; font-weight: bold; text-transform: uppercase; background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px;">

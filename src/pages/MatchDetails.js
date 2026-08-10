@@ -1,4 +1,5 @@
 import { supabase, isAdmin } from '../lib/supabaseClient.js';
+import { formatPhase } from '../lib/constants.js';
 
 export async function renderMatchDetailsPage(params) {
   const matchId = params.id;
@@ -43,7 +44,7 @@ export async function renderMatchDetailsPage(params) {
     <div class="glass-card text-center mb-xl">
       <div class="match-meta mb-md text-muted">
         <span>${new Date(match.match_date).toLocaleString('it-IT')}</span> | 
-        <span>${match.group?.name || 'Fase a Gironi'}</span>
+        <span>${match.group?.name || formatPhase(match.phase)}</span>
       </div>
 
       <div class="match-scoreboard grid grid-3" style="align-items: center;">

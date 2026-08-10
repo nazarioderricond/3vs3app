@@ -902,7 +902,7 @@ function renderMatchesHTML(matches) {
             return `
             <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)};">
               <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; opacity: 0.8;">
-                <span>${match.phase === 'group_stage' ? (match.group?.name || 'Gironi') : formatPhase(match.phase)}</span>
+                <span>${match.group?.name || formatPhase(match.phase)}</span>
                 <span>${match.match_date ? new Date(match.match_date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 <span class="status-badge ${match.status === 'live' ? 'live-pulse' : ''}" style="color: ${getStatusColor(match.status)}; font-weight: bold; text-transform: uppercase;">
                   ${match.status === 'live' ? '🔴 LIVE' : (match.status === 'completed' ? 'Terminata' : 'Programmata')}

@@ -9,7 +9,7 @@ export const PHASE_LABELS = {
     round_16: 'Ottavi di Finale',
     quarterfinals: 'Quarti di Finale',
     semifinals: 'Semifinali',
-    final: 'Finale 1°/2° Posto',
+    final: 'Finale',
     final_3rd: 'Finale 3° Posto',
     final_4th: 'Finale 4° Posto',
     final_5th: 'Finale 5° Posto',
