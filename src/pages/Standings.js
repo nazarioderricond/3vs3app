@@ -65,7 +65,8 @@ export async function renderStandingsPage(params) {
     .select(`
       *,
       home_team:teams!home_team_id(name, logo_url),
-      away_team:teams!away_team_id(name, logo_url)
+      away_team:teams!away_team_id(name, logo_url),
+      group:groups(name)
     `)
     .eq('season_id', currentSeason.id)
     .order('match_date', { ascending: true });
