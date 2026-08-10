@@ -1093,3 +1093,49 @@
     cursor: not-allowed;
     transform: none;
 }
+
+/* Responsive Mobile Styles for Public Match Cards */
+@media (max-width: 640px) {
+    .match-card {
+        padding: 0.85rem !important;
+    }
+
+    .match-card .match-header {
+        font-size: 0.8rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .match-card .team-home,
+    .match-card .team-away {
+        font-size: 0.95rem !important;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .match-card .match-score {
+        font-size: 1.3rem !important;
+        padding: 0.35rem 0.65rem !important;
+        min-width: 65px !important;
+    }
+}
+
+@media (max-width: 400px) {
+    .match-card {
+        padding: 0.7rem !important;
+    }
+
+    .match-card .match-header {
+        font-size: 0.75rem !important;
+    }
+
+    .match-card .team-home,
+    .match-card .team-away {
+        font-size: 0.85rem !important;
+    }
+
+    .match-card .match-score {
+        font-size: 1.15rem !important;
+        padding: 0.25rem 0.5rem !important;
+        min-width: 55px !important;
+    }
+}

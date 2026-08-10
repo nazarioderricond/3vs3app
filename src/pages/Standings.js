@@ -150,6 +150,14 @@ export async function renderStandingsPage(params) {
     const categoryGroupStageMatches = groupStageMatches.filter(isMatchInCategory);
     const categoryPlayoffMatches = playoffMatches.filter(isMatchInCategory);
 
+    // Filter groups strictly for round-robin standings (exclude final phase sub-groups)
+    const standingsGroups = categoryGroups.filter(g => {
+      const nameLower = g.name.toLowerCase();
+      const isFinalGroup = nameLower.includes('finale') || nameLower.includes('quarti') || nameLower.includes('semifinal') || nameLower.includes('ottavi') || nameLower.includes('posto');
+      if (isFinalGroup) return false;
+      return categoryGroupStageMatches.some(m => m.group_id === g.id) || nameLower.includes('girone');
+    });
+
     // Group playoff matches dynamically by sub-phase name or formatted phase
     const playoffPhasesMap = {};
     categoryPlayoffMatches.forEach(m => {
@@ -210,7 +218,7 @@ export async function renderStandingsPage(params) {
       <!-- GROUP STAGE & STANDINGS -->
       <div class="view-section" id="view-standings">
         <div class="groups-container">
-          ${categoryGroups.length > 0 ? categoryGroups.map(group => {
+          ${standingsGroups.length > 0 ? standingsGroups.map(group => {
             const groupMatches = categoryGroupStageMatches.filter(m => m.group_id === group.id);
             const standings = calculateGroupStandings(group, groupMatches);
             const liveMatches = groupMatches.filter(m => m.status === 'live');
@@ -433,7 +441,7 @@ export async function renderStandingsPage(params) {
     });
 
     // Trigger default selection (Classifica Gironi if available, else Fasi Finali)
-    const defaultView = categoryGroups.length > 0 ? 'standings' : (categoryPlayoffMatches.length > 0 ? 'playoffs' : 'standings');
+    const defaultView = standingsGroups.length > 0 ? 'standings' : (categoryPlayoffMatches.length > 0 ? 'playoffs' : 'standings');
     const initialViewTab = viewFilterContainer.querySelector(`.view-tab[data-view="${defaultView}"]`);
     if (initialViewTab) {
       initialViewTab.click();

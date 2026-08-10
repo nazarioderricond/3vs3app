@@ -213,42 +213,44 @@ export async function renderPublicMatchesPage() {
                 const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
 
                 return `
-              <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)};">
-                <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; opacity: 0.9; align-items: center;">
-                  <span style="font-weight: 600; color: var(--color-yellow); background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px;">
+              <div class="glass-card match-card" style="border-left: 5px solid ${getStatusColor(match.status)}; padding: 1rem;">
+                <div class="match-header" style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.9; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
+                  <span class="match-category-badge" style="font-weight: 600; color: var(--color-yellow); background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                       ${match.category || 'N/A'} - ${match.group?.name || formatPhase(match.phase)}
                   </span>
-                  <span>${match.match_date ? new Date(match.match_date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                  <span class="status-badge ${match.status === 'live' ? 'live-pulse' : ''}" style="color: ${getStatusColor(match.status)}; font-weight: bold; text-transform: uppercase; background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px;">
-                    ${match.status === 'live' ? '🔴 LIVE' : (match.status === 'completed' ? 'Terminata' : 'Programmata')}
-                  </span>
+                  <div class="match-meta-right" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                    <span>${match.match_date ? new Date(match.match_date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    <span class="status-badge ${match.status === 'live' ? 'live-pulse' : ''}" style="color: ${getStatusColor(match.status)}; font-weight: bold; text-transform: uppercase; background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem;">
+                      ${match.status === 'live' ? '🔴 LIVE' : (match.status === 'completed' ? 'Terminata' : 'Programmata')}
+                    </span>
+                  </div>
                 </div>
                 
-                <a href="/match/${match.id}" style="text-decoration: none; color: inherit; display: block;" class="mt-md">
-                    <div class="match-content" style="display: flex; align-items: center; justify-content: space-between;">
-                        <div class="team-home" style="flex: 1; text-align: right; font-weight: ${match.home_score > match.away_score ? '800' : '500'}; color: ${match.home_score > match.away_score ? 'var(--color-yellow)' : 'inherit'}; font-size: 1.1rem;">
+                <a href="/match/${match.id}" style="text-decoration: none; color: inherit; display: block;" class="mt-xs">
+                    <div class="match-content" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                        <div class="team-home" style="flex: 1; text-align: right; font-weight: ${match.home_score > match.away_score ? '800' : '500'}; color: ${match.home_score > match.away_score ? 'var(--color-yellow)' : 'inherit'}; font-size: 1.05rem; word-break: break-word; min-width: 0;">
                             ${match.home_team?.name || 'TBD'}
                         </div>
                         
                         <div class="match-score" style="
-                            padding: 0.5rem 1.5rem; 
+                            padding: 0.4rem 0.8rem; 
                             font-family: var(--font-display); 
-                            font-size: 1.8rem; 
+                            font-size: 1.5rem; 
                             color: var(--color-white);
                             background: rgba(0,0,0,0.4);
                             border-radius: 8px;
-                            margin: 0 1rem;
-                            min-width: 100px;
+                            flex-shrink: 0;
+                            min-width: 75px;
                             text-align: center;
                             font-weight: bold;
                         ">
                             ${match.status === 'scheduled'
-                    ? '<span style="font-size: 1.2rem; opacity: 0.7;">VS</span>'
-                    : `${match.home_score !== null ? match.home_score : 0} <span style="opacity:0.5; margin:0 4px;">-</span> ${match.away_score !== null ? match.away_score : 0}`
+                    ? '<span style="font-size: 1.1rem; opacity: 0.7;">VS</span>'
+                    : `${match.home_score !== null ? match.home_score : 0} <span style="opacity:0.5; margin:0 2px;">-</span> ${match.away_score !== null ? match.away_score : 0}`
                 }
                         </div>
                         
-                        <div class="team-away" style="flex: 1; text-align: left; font-weight: ${match.away_score > match.home_score ? '800' : '500'}; color: ${match.away_score > match.home_score ? 'var(--color-yellow)' : 'inherit'}; font-size: 1.1rem;">
+                        <div class="team-away" style="flex: 1; text-align: left; font-weight: ${match.away_score > match.home_score ? '800' : '500'}; color: ${match.away_score > match.home_score ? 'var(--color-yellow)' : 'inherit'}; font-size: 1.05rem; word-break: break-word; min-width: 0;">
                             ${match.away_team?.name || 'TBD'}
                         </div>
                     </div>
