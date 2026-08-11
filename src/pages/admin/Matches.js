@@ -157,6 +157,19 @@ export async function renderAdminMatchesPage() {
         </div>
       </form>
     </div>
+    <div class="glass-card mb-lg p-md" style="background: rgba(20, 20, 20, 0.85); border: 1px solid rgba(255, 215, 0, 0.3);">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <label for="admin-date-filter" class="font-bold text-yellow" style="white-space: nowrap; font-size: 1rem;">
+            📅 Filtra per Data:
+          </label>
+          <select id="admin-date-filter" class="scorer-select" style="min-width: 260px; max-width: 360px; font-size: 0.95rem; min-height: 40px; padding: 0.4rem 2rem 0.4rem 0.8rem;">
+            <option value="all">Tutte le date</option>
+          </select>
+        </div>
+        <div id="admin-matches-count" class="text-sm text-muted font-bold"></div>
+      </div>
+    </div>
     
     <div class="matches-list">
       ${renderMatchesHTML(matches)}
@@ -169,8 +182,107 @@ export async function renderAdminMatchesPage() {
   const cancelBtn = page.querySelector('#cancel-btn');
   const form = page.querySelector('#create-match-form');
 
-  // State for editing
+  // State for editing & date filter
   let editingMatchId = null;
+  let selectedDateFilter = 'all';
+
+  function scrollToMatchForm() {
+    matchForm.classList.remove('hidden');
+    setTimeout(() => {
+      const yOffset = -85;
+      const y = matchForm.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }, 60);
+  }
+
+  function populateDateFilterOptions() {
+    const dateFilterSelect = page.querySelector('#admin-date-filter');
+    if (!dateFilterSelect) return;
+
+    const availableDatesMap = new Map();
+    matches.forEach(m => {
+      if (m.match_date) {
+        const d = new Date(m.match_date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const isoDate = `${year}-${month}-${day}`;
+
+        if (!availableDatesMap.has(isoDate)) {
+          let label = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          label = label.charAt(0).toUpperCase() + label.slice(1);
+          availableDatesMap.set(isoDate, label);
+        }
+      } else {
+        if (!availableDatesMap.has('none')) {
+          availableDatesMap.set('none', 'Data da definire');
+        }
+      }
+    });
+
+    const sortedIsoDates = Array.from(availableDatesMap.keys()).sort((a, b) => {
+      if (a === 'none') return 1;
+      if (b === 'none') return -1;
+      return a.localeCompare(b);
+    });
+
+    // Auto-select today if present and initial state is 'all'
+    const today = new Date();
+    const todayIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    if (selectedDateFilter === 'all' && availableDatesMap.has(todayIso)) {
+      selectedDateFilter = todayIso;
+    }
+
+    let optionsHtml = `<option value="all">📅 Tutte le date (${matches.length} partite)</option>`;
+    sortedIsoDates.forEach(iso => {
+      const count = matches.filter(m => {
+        if (iso === 'none') return !m.match_date;
+        if (!m.match_date) return false;
+        const d = new Date(m.match_date);
+        const matchIso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        return matchIso === iso;
+      }).length;
+      optionsHtml += `<option value="${iso}" ${selectedDateFilter === iso ? 'selected' : ''}>${availableDatesMap.get(iso)} (${count} partite)</option>`;
+    });
+
+    dateFilterSelect.innerHTML = optionsHtml;
+  }
+
+  function getFilteredMatches() {
+    if (!matches) return [];
+    if (selectedDateFilter === 'all') return matches;
+    return matches.filter(m => {
+      if (selectedDateFilter === 'none') return !m.match_date;
+      if (!m.match_date) return false;
+      const d = new Date(m.match_date);
+      const matchIso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return matchIso === selectedDateFilter;
+    });
+  }
+
+  function renderMatchesList() {
+    populateDateFilterOptions();
+    const matchesListEl = page.querySelector('.matches-list');
+    const filtered = getFilteredMatches();
+    if (matchesListEl) {
+      matchesListEl.innerHTML = renderMatchesHTML(filtered);
+    }
+    const countEl = page.querySelector('#admin-matches-count');
+    if (countEl) {
+      countEl.textContent = `Mostrando ${filtered.length} di ${matches.length} partite`;
+    }
+  }
+
+  const dateFilterSelect = page.querySelector('#admin-date-filter');
+  if (dateFilterSelect) {
+    dateFilterSelect.addEventListener('change', (e) => {
+      selectedDateFilter = e.target.value;
+      renderMatchesList();
+    });
+  }
+
+  // Initial population of date filter
+  renderMatchesList();
 
   newMatchBtn.addEventListener('click', () => {
     editingMatchId = null;
@@ -182,8 +294,8 @@ export async function renderAdminMatchesPage() {
     awaySelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
     groupSelect.innerHTML = '<option value="">Seleziona prima una categoria</option>';
     document.getElementById('scorers-container').innerHTML = '';
-    matchForm.classList.remove('hidden');
     page.querySelector('h3').textContent = 'Inserisci Partita';
+    scrollToMatchForm();
   });
 
   cancelBtn.addEventListener('click', () => {
@@ -676,7 +788,7 @@ export async function renderAdminMatchesPage() {
         alert('Errore aggiornamento stato: ' + error.message);
       } else {
         console.log('Update successful:', data);
-        renderMatchesList();
+        refreshAndRenderMatchesList();
       }
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -707,39 +819,29 @@ export async function renderAdminMatchesPage() {
         console.error('Error updating score:', error);
         alert('Errore aggiornamento punteggio');
       } else {
-        renderMatchesList();
+        refreshAndRenderMatchesList();
       }
     } catch (err) {
       console.error('Unexpected error:', err);
     }
   };
 
-  // Render Matches List Function
-  const renderMatchesList = async () => {
-    console.log('Refreshing matches list...');
-    const { data: latestMatches, error } = await supabase
+  const refreshAndRenderMatchesList = async () => {
+    const { data: latestMatches } = await supabase
       .from('matches')
       .select(`
         *,
         home_team:teams!home_team_id(name),
         away_team:teams!away_team_id(name),
-        group:groups(name)
+        group:groups(name),
+        match_scorers(*, player:players(first_name, last_name))
       `)
       .eq('season_id', currentSeason.id)
       .order('match_date', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching matches:', error);
-      return;
-    }
-
     if (latestMatches) {
       matches = latestMatches;
-    }
-
-    const listContainer = page.querySelector('.matches-list');
-    if (listContainer && latestMatches) {
-      listContainer.innerHTML = renderMatchesHTML(latestMatches);
+      renderMatchesList();
     }
   };
 
@@ -785,7 +887,7 @@ export async function renderAdminMatchesPage() {
         if (confirm('Sei sicuro di voler eliminare questa partita?')) {
           supabase.from('matches').delete().eq('id', id).then(({ error }) => {
             if (error) alert('Errore eliminazione: ' + error.message);
-            else renderMatchesList();
+            else refreshAndRenderMatchesList();
           });
         }
       }
@@ -834,10 +936,8 @@ export async function renderAdminMatchesPage() {
         }
 
         page.querySelector('h3').textContent = 'Modifica Partita';
-        matchForm.classList.remove('hidden');
-        matchForm.scrollIntoView({ behavior: 'smooth' });
-
         renderScorerInputs(data.home, data.away, editingMatchId);
+        scrollToMatchForm();
       }
     });
   }
