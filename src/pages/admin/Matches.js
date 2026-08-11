@@ -582,6 +582,22 @@ export async function renderAdminMatchesPage() {
 
       if (error) throw error;
 
+      if (formData.group_id) {
+        const teamsToLink = [formData.home_team_id, formData.away_team_id].filter(Boolean);
+        for (const tid of teamsToLink) {
+          const { data: existing } = await supabase
+            .from('team_groups')
+            .select('id')
+            .eq('group_id', formData.group_id)
+            .eq('team_id', tid)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from('team_groups').insert({ group_id: formData.group_id, team_id: tid });
+          }
+        }
+      }
+
       if (matchId) {
         await supabase.from('match_scorers').delete().eq('match_id', matchId);
 

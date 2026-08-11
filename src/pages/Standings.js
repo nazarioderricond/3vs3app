@@ -468,29 +468,27 @@ export async function renderStandingsPage(params) {
 
   const subscription = supabase
     .channel('public:matches')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, async (payload) => {
-      console.log('Match update received:', payload);
-      const updatedMatchId = payload.new.id;
-
-      const { data: fullMatch, error } = await supabase
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async () => {
+      const { data: updatedMatches } = await supabase
         .from('matches')
         .select(`
           *,
           home_team:teams!home_team_id(name, logo_url),
-          away_team:teams!away_team_id(name, logo_url)
+          away_team:teams!away_team_id(name, logo_url),
+          group:groups(name)
         `)
-        .eq('id', updatedMatchId)
-        .single();
+        .eq('season_id', currentSeason.id)
+        .order('match_date', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching updated match:', error);
-        return;
-      }
-
-      const matchIndex = allMatches.findIndex(m => m.id === fullMatch.id);
-      if (matchIndex !== -1) {
-        const match = allMatches[matchIndex];
-        Object.assign(match, fullMatch);
+      if (updatedMatches) {
+        allMatches.length = 0;
+        allMatches.push(...updatedMatches);
+        const newGroupStage = allMatches.filter(m => m.phase === 'group_stage');
+        const newPlayoffs = allMatches.filter(m => m.phase !== 'group_stage');
+        groupStageMatches.length = 0;
+        groupStageMatches.push(...newGroupStage);
+        playoffMatches.length = 0;
+        playoffMatches.push(...newPlayoffs);
         renderCategoryContent(currentCategory);
       }
     })
@@ -502,41 +500,71 @@ export async function renderStandingsPage(params) {
 function calculateGroupStandings(group, groupMatches) {
   const standings = {};
 
-  group.team_groups.forEach(tg => {
-    standings[tg.team.id] = {
-      id: tg.team.id,
-      name: tg.team.name,
-      logo_url: tg.team.logo_url,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDifference: 0,
-      points: 0,
-    };
+  // 1. Initialize teams registered in group.team_groups
+  if (group.team_groups) {
+    group.team_groups.forEach(tg => {
+      if (tg.team) {
+        standings[tg.team.id] = {
+          id: tg.team.id,
+          name: tg.team.name,
+          logo_url: tg.team.logo_url,
+          played: 0,
+          won: 0,
+          drawn: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDifference: 0,
+          points: 0,
+        };
+      }
+    });
+  }
+
+  // 2. ALSO initialize any teams participating in groupMatches if not already in standings
+  groupMatches.forEach(match => {
+    if (match.home_team_id && !standings[match.home_team_id] && match.home_team) {
+      standings[match.home_team_id] = {
+        id: match.home_team_id,
+        name: match.home_team.name,
+        logo_url: match.home_team.logo_url,
+        played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0
+      };
+    }
+    if (match.away_team_id && !standings[match.away_team_id] && match.away_team) {
+      standings[match.away_team_id] = {
+        id: match.away_team_id,
+        name: match.away_team.name,
+        logo_url: match.away_team.logo_url,
+        played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0
+      };
+    }
   });
 
+  // 3. Calculate points and stats from matches
   groupMatches.forEach(match => {
-    if (match.home_score !== null && match.away_score !== null) {
+    const isCompleted = match.status === 'completed' || (match.home_score !== null && match.away_score !== null);
+    if (isCompleted && match.home_score !== null && match.away_score !== null) {
       const homeTeam = standings[match.home_team_id];
       const awayTeam = standings[match.away_team_id];
 
       if (homeTeam && awayTeam) {
+        const homeScore = Number(match.home_score);
+        const awayScore = Number(match.away_score);
+
         homeTeam.played++;
         awayTeam.played++;
 
-        homeTeam.goalsFor += match.home_score;
-        homeTeam.goalsAgainst += match.away_score;
-        awayTeam.goalsFor += match.away_score;
-        awayTeam.goalsAgainst += match.home_score;
+        homeTeam.goalsFor += homeScore;
+        homeTeam.goalsAgainst += awayScore;
+        awayTeam.goalsFor += awayScore;
+        awayTeam.goalsAgainst += homeScore;
 
-        if (match.home_score > match.away_score) {
+        if (homeScore > awayScore) {
           homeTeam.won++;
           homeTeam.points += 3;
           awayTeam.lost++;
-        } else if (match.home_score < match.away_score) {
+        } else if (homeScore < awayScore) {
           awayTeam.won++;
           awayTeam.points += 3;
           homeTeam.lost++;
@@ -557,9 +585,10 @@ function calculateGroupStandings(group, groupMatches) {
     }))
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
+      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
       if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
       if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
-      return b.goalDifference - a.goalDifference;
+      return a.name.localeCompare(b.name);
     });
 }
 
