@@ -168,8 +168,21 @@ export async function renderStandingsPage(params) {
       playoffPhasesMap[title].push(m);
     });
 
-    // Calculate Top Scorers for this category
+    // Calculate Top Scorers for this category (Media Goal = goals / played)
     const categoryScorers = {};
+    const teamPlayedMatches = {};
+
+    allMatches.forEach(m => {
+      const isCompleted = m.status === 'completed' || m.status === 'live' || (m.home_score !== null && m.away_score !== null);
+      if (isCompleted && isMatchInCategory(m)) {
+        if (m.home_team_id) {
+          teamPlayedMatches[m.home_team_id] = (teamPlayedMatches[m.home_team_id] || 0) + 1;
+        }
+        if (m.away_team_id) {
+          teamPlayedMatches[m.away_team_id] = (teamPlayedMatches[m.away_team_id] || 0) + 1;
+        }
+      }
+    });
 
     if (scorers) {
       scorers.forEach(s => {
@@ -197,22 +210,41 @@ export async function renderStandingsPage(params) {
       if (!s.player) return; // Ignore Autogol (null player)
 
       const playerId = s.player.id;
+      const teamId = s.team_id || s.player.team_id;
+
       if (!categoryScorers[playerId]) {
-        const teamObj = s.player.team || teams?.find(t => t.id === s.player.team_id);
+        const teamObj = s.player.team || teams?.find(t => t.id === teamId);
         categoryScorers[playerId] = {
           id: playerId,
           name: `${s.player.first_name} ${s.player.last_name}`,
-          teamId: s.player.team_id,
+          teamId: teamId,
           teamName: teamObj?.name || 'N/D',
           teamLogo: teamObj?.logo_url || null,
-          goals: 0
+          goals: 0,
+          uniqueMatches: new Set()
         };
       }
       categoryScorers[playerId].goals += s.goals;
+      if (s.match_id) {
+        categoryScorers[playerId].uniqueMatches.add(s.match_id);
+      }
     }
 
-    const sortedScorers = Object.values(categoryScorers)
-      .sort((a, b) => b.goals - a.goals);
+    const sortedScorers = Object.values(categoryScorers).map(scorer => {
+      const teamMatchesCount = teamPlayedMatches[scorer.teamId] || 0;
+      const played = Math.max(1, teamMatchesCount || scorer.uniqueMatches.size);
+      const avgGoals = scorer.goals / played;
+      return {
+        ...scorer,
+        played,
+        avgGoals
+      };
+    }).sort((a, b) => {
+      if (b.avgGoals !== a.avgGoals) return b.avgGoals - a.avgGoals;
+      if (b.goals !== a.goals) return b.goals - a.goals;
+      if (a.played !== b.played) return a.played - b.played;
+      return a.name.localeCompare(b.name);
+    });
 
     const html = `
       <!-- GROUP STAGE & STANDINGS -->
@@ -334,13 +366,14 @@ export async function renderStandingsPage(params) {
       <!-- TOP SCORERS SECTION -->
       <div class="view-section" id="view-scorers">
         <div class="scorers-section glass-card mb-2xl">
-          <h3 class="mb-lg border-bottom-yellow text-center" style="color: var(--color-yellow); text-transform: uppercase; letter-spacing: 1.5px;">⚽ Classifica Marcatori - ${category}</h3>
+          <h3 class="mb-lg border-bottom-yellow text-center" style="color: var(--color-yellow); text-transform: uppercase; letter-spacing: 1.5px;">⚽ Classifica Marcatori (Media Gol) - ${category}</h3>
           <div class="standings-table-wrapper">
             <div class="standings-header" style="display: flex; align-items: center; padding: 0.75rem 1rem;">
               <div style="width: 50px; text-align: center; font-weight: bold;">Pos</div>
               <div style="flex: 2; font-weight: bold;">Giocatore</div>
               <div style="flex: 2; font-weight: bold;">Squadra</div>
-              <div style="width: 80px; text-align: center; font-weight: bold;">Gol</div>
+              <div style="width: 90px; text-align: center; font-weight: bold;" title="Partite Giocate">Partite</div>
+              <div style="width: 100px; text-align: center; font-weight: bold;" title="Media Gol (Gol / Partite)">Media Gol</div>
             </div>
             
             ${sortedScorers.length > 0 ? sortedScorers.map((scorer, index) => `
@@ -356,8 +389,11 @@ export async function renderStandingsPage(params) {
                   ${scorer.teamLogo ? `<img src="${scorer.teamLogo}" alt="${scorer.teamName}" class="team-logo-small">` : ''}
                   <span style="font-weight: 500; opacity: 0.9;">${scorer.teamName}</span>
                 </div>
-                <div style="width: 80px; text-align: center; font-weight: 800; color: var(--color-yellow); font-size: 1.1rem;">
-                  ${scorer.goals}
+                <div style="width: 90px; text-align: center; font-weight: 600; opacity: 0.9; font-size: 0.95rem;">
+                  ${scorer.played} (${scorer.goals} ${scorer.goals === 1 ? 'gol' : 'gol'})
+                </div>
+                <div style="width: 100px; text-align: center; font-weight: 800; color: var(--color-yellow); font-size: 1.15rem;">
+                  ${scorer.avgGoals.toFixed(2)}
                 </div>
               </div>
             `).join('') : '<p class="text-center p-lg opacity-7">Nessun gol registrato in questa categoria.</p>'}
