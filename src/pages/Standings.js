@@ -246,6 +246,88 @@ export async function renderStandingsPage(params) {
       return a.name.localeCompare(b.name);
     });
 
+    // Detect Grand Final Winner for this category
+    const grandFinalMatch = categoryPlayoffMatches.find(m => {
+      if (m.phase === 'final') return true;
+      const groupName = m.group?.name ? m.group.name.toLowerCase() : '';
+      return groupName.includes('finale 1°') || groupName === 'finale';
+    });
+
+    let winnerBoxHtml = '';
+    if (grandFinalMatch && (grandFinalMatch.status === 'completed' || grandFinalMatch.home_score !== null)) {
+      const homeScore = grandFinalMatch.home_score !== null ? Number(grandFinalMatch.home_score) : null;
+      const awayScore = grandFinalMatch.away_score !== null ? Number(grandFinalMatch.away_score) : null;
+
+      if (homeScore !== null && awayScore !== null && homeScore !== awayScore) {
+        const isHomeWinner = homeScore > awayScore;
+        const winnerTeam = isHomeWinner ? grandFinalMatch.home_team : grandFinalMatch.away_team;
+        const runnerUpTeam = isHomeWinner ? grandFinalMatch.away_team : grandFinalMatch.home_team;
+
+        if (winnerTeam) {
+          winnerBoxHtml = `
+            <div class="winner-celebration-box mb-xl" style="
+              background: linear-gradient(135deg, rgba(255, 215, 0, 0.22) 0%, rgba(20, 20, 35, 0.95) 60%, rgba(10, 10, 18, 0.98) 100%);
+              border: 2px solid #ffd700;
+              box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.2);
+              border-radius: 20px;
+              padding: 2rem 1.5rem;
+              text-align: center;
+              position: relative;
+              overflow: hidden;
+            ">
+              <div style="font-size: 2.2rem; margin-bottom: 0.4rem; filter: drop-shadow(0 0 10px #ffd700);">
+                ✨ 🏆 🎉 🏆 ✨
+              </div>
+              <div class="badge" style="
+                background: #ffd700;
+                color: #000;
+                font-size: 0.95rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                padding: 0.4rem 1.2rem;
+                border-radius: 50px;
+                display: inline-block;
+                box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+                margin-bottom: 1rem;
+              ">
+                VINCITORE TORNEO • CATEGORIA ${category.toUpperCase()}
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin: 0.8rem 0; flex-wrap: wrap;">
+                ${winnerTeam.logo_url ? `<img src="${winnerTeam.logo_url}" alt="${winnerTeam.name}" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.6));">` : ''}
+                <h2 style="
+                  font-size: 2.2rem;
+                  font-weight: 900;
+                  color: #ffd700;
+                  text-transform: uppercase;
+                  letter-spacing: 1px;
+                  margin: 0;
+                  text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+                ">
+                  ${winnerTeam.name}
+                </h2>
+              </div>
+              <p style="font-size: 1.05rem; color: rgba(255, 255, 255, 0.9); margin-top: 0.5rem; font-weight: 600;">
+                🥇 Campioni del Torneo 3vs3 Ischitella per la categoria ${category}!
+              </p>
+              <div style="
+                display: inline-block;
+                margin-top: 0.8rem;
+                background: rgba(0, 0, 0, 0.5);
+                border: 1px solid rgba(255, 215, 0, 0.4);
+                border-radius: 30px;
+                padding: 0.5rem 1.2rem;
+                font-size: 0.95rem;
+                color: #ffffff;
+              ">
+                ⚽ Finale: <span style="color: #ffd700; font-weight: bold;">${winnerTeam.name}</span> ${homeScore} - ${awayScore} <span style="opacity: 0.8;">${runnerUpTeam?.name || 'TBD'}</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
+
     const html = `
       <!-- GROUP STAGE & STANDINGS -->
       <div class="view-section" id="view-standings">
@@ -406,6 +488,8 @@ export async function renderStandingsPage(params) {
         <div class="playoff-section mt-xl">
           <h2 class="text-center mb-xl" style="color: var(--color-black); background: var(--color-yellow); padding: 0.8rem 2rem; border-radius: 50px; display: inline-block; text-transform: uppercase; letter-spacing: 2px; font-size: 1.6rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); font-weight: 800;">Fasi Finali - ${category}</h2>
         
+          ${winnerBoxHtml}
+
           ${Object.keys(playoffPhasesMap).length > 0 ? `
             <div class="grid grid-2 gap-lg">
               ${Object.entries(playoffPhasesMap).map(([title, matches]) => `
@@ -849,6 +933,46 @@ function exportStandingsGraphic({ currentSeason, currentCategory, currentView, s
     ctx.textAlign = 'left';
     ctx.fillText('FASI FINALI', paddingX, currentY);
     currentY += 20;
+
+    // Canvas Winner Box
+    let grandFinalWinner = null;
+    Object.values(playoffPhasesMap).flat().forEach(m => {
+      if (m.phase === 'final' || (m.group?.name && m.group.name.toLowerCase().includes('finale 1°'))) {
+        if (m.home_score !== null && m.away_score !== null) {
+          const h = Number(m.home_score);
+          const a = Number(m.away_score);
+          if (h !== a) {
+            const isHomeWinner = h > a;
+            grandFinalWinner = {
+              name: isHomeWinner ? m.home_team?.name : m.away_team?.name,
+              score: `${h} - ${a}`,
+              runnerUp: isHomeWinner ? m.away_team?.name : m.home_team?.name
+            };
+          }
+        }
+      }
+    });
+
+    if (grandFinalWinner) {
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 90, 10);
+      else ctx.rect(paddingX, currentY, tableW, 90);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(`✨ 🏆 VINCITORE TORNEO • ${currentCategory.toUpperCase()} 🏆 ✨`, width / 2, currentY + 34);
+
+      ctx.font = '900 28px sans-serif';
+      ctx.fillText(`${grandFinalWinner.name.toUpperCase()} (${grandFinalWinner.score})`, width / 2, currentY + 70);
+
+      currentY += 115;
+    }
 
     Object.entries(playoffPhasesMap).forEach(([title, pMatches]) => {
       ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
