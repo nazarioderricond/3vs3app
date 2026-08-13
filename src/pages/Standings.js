@@ -246,12 +246,8 @@ export async function renderStandingsPage(params) {
       return a.name.localeCompare(b.name);
     });
 
-    // Detect Grand Final Winner for this category
-    const grandFinalMatch = categoryPlayoffMatches.find(m => {
-      if (m.phase === 'final') return true;
-      const groupName = m.group?.name ? m.group.name.toLowerCase() : '';
-      return groupName.includes('finale 1°') || groupName === 'finale';
-    });
+    // Detect Grand Final Winner for this category (EXCLUSIVELY 1st place final)
+    const grandFinalMatch = categoryPlayoffMatches.find(isMainGrandFinalMatch);
 
     let winnerBoxHtml = '';
     if (grandFinalMatch && (grandFinalMatch.status === 'completed' || grandFinalMatch.home_score !== null)) {
@@ -737,6 +733,31 @@ function calculateGroupStandings(group, groupMatches) {
     });
 }
 
+function isMainGrandFinalMatch(match) {
+  if (!match) return false;
+  const groupName = match.group?.name ? match.group.name.toLowerCase() : '';
+  const phase = match.phase || '';
+
+  // Exclude all sub-final placement matches (7°, 6°, 5°, 4°, 3°)
+  if (phase === 'final_7th' || phase === 'final_6th' || phase === 'final_5th' || phase === 'final_4th' || phase === 'final_3rd') {
+    return false;
+  }
+  if (groupName.includes('7°') || groupName.includes('7 posto') || groupName.includes('7° posto')) return false;
+  if (groupName.includes('6°') || groupName.includes('6 posto') || groupName.includes('6° posto')) return false;
+  if (groupName.includes('5°') || groupName.includes('5 posto') || groupName.includes('5° posto')) return false;
+  if (groupName.includes('4°') || groupName.includes('4 posto') || groupName.includes('4° posto')) return false;
+  if (groupName.includes('3°') || groupName.includes('3 posto') || groupName.includes('3° posto')) return false;
+
+  // Must be phase 'final' AND group name is empty or 'finale' or 'finale 1°' or 'finale 1°/2°'
+  if (phase === 'final') {
+    if (!groupName || groupName === 'finale' || groupName.includes('1°') || groupName.includes('1/2') || groupName.includes('1°/2°')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function formatDate(dateString) {
   if (!dateString) return 'Data da definire';
   const date = new Date(dateString);
@@ -934,24 +955,21 @@ function exportStandingsGraphic({ currentSeason, currentCategory, currentView, s
     ctx.fillText('FASI FINALI', paddingX, currentY);
     currentY += 20;
 
-    // Canvas Winner Box
+    // Canvas Winner Box (EXCLUSIVELY 1st place final)
     let grandFinalWinner = null;
-    Object.values(playoffPhasesMap).flat().forEach(m => {
-      if (m.phase === 'final' || (m.group?.name && m.group.name.toLowerCase().includes('finale 1°'))) {
-        if (m.home_score !== null && m.away_score !== null) {
-          const h = Number(m.home_score);
-          const a = Number(m.away_score);
-          if (h !== a) {
-            const isHomeWinner = h > a;
-            grandFinalWinner = {
-              name: isHomeWinner ? m.home_team?.name : m.away_team?.name,
-              score: `${h} - ${a}`,
-              runnerUp: isHomeWinner ? m.away_team?.name : m.home_team?.name
-            };
-          }
-        }
+    const mainFinalMatch = Object.values(playoffPhasesMap).flat().find(isMainGrandFinalMatch);
+    if (mainFinalMatch && mainFinalMatch.home_score !== null && mainFinalMatch.away_score !== null) {
+      const h = Number(mainFinalMatch.home_score);
+      const a = Number(mainFinalMatch.away_score);
+      if (h !== a) {
+        const isHomeWinner = h > a;
+        grandFinalWinner = {
+          name: isHomeWinner ? mainFinalMatch.home_team?.name : mainFinalMatch.away_team?.name,
+          score: `${h} - ${a}`,
+          runnerUp: isHomeWinner ? mainFinalMatch.away_team?.name : mainFinalMatch.home_team?.name
+        };
       }
-    });
+    }
 
     if (grandFinalWinner) {
       ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
