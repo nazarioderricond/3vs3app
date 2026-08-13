@@ -446,13 +446,21 @@ export async function renderStandingsPage(params) {
 
     contentContainer.innerHTML = html;
 
-    // Build Sub-section View Tabs
+    // Track current active view tab
+    let currentView = 'standings';
+
+    // Build Sub-section View Tabs + Social Export Button
     viewFilterContainer.innerHTML = `
-      <div class="category-tabs" style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.3);">
-        <button class="category-tab view-tab active" data-view="standings">Classifica Gironi</button>
-        <button class="category-tab view-tab" data-view="playoffs">Fasi Finali</button>
-        <button class="category-tab view-tab" data-view="scorers">Classifica Marcatori</button>
-        <button class="category-tab view-tab" data-view="all">Mostra Tutto</button>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%;">
+        <div class="category-tabs" style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.3);">
+          <button class="category-tab view-tab active" data-view="standings">Classifica Gironi</button>
+          <button class="category-tab view-tab" data-view="playoffs">Fasi Finali</button>
+          <button class="category-tab view-tab" data-view="scorers">Classifica Marcatori</button>
+          <button class="category-tab view-tab" data-view="all">Mostra Tutto</button>
+        </div>
+        <button id="export-standings-graphic-btn" class="btn-export-social-link" style="font-size: 0.95rem; padding: 0.55rem 1.5rem;">
+          📸 Esporta Grafica Social
+        </button>
       </div>
     `;
 
@@ -461,6 +469,7 @@ export async function renderStandingsPage(params) {
     viewTabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
         const targetView = e.target.dataset.view;
+        currentView = targetView;
         viewTabs.forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
 
@@ -475,6 +484,22 @@ export async function renderStandingsPage(params) {
         });
       });
     });
+
+    // Social Export Handler
+    const exportBtn = viewFilterContainer.querySelector('#export-standings-graphic-btn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        exportStandingsGraphic({
+          currentSeason,
+          currentCategory: category,
+          currentView,
+          standingsGroups,
+          categoryGroupStageMatches,
+          playoffPhasesMap,
+          sortedScorers
+        });
+      });
+    }
 
     // Trigger default selection (Classifica Gironi if available, else Fasi Finali)
     const defaultView = standingsGroups.length > 0 ? 'standings' : (categoryPlayoffMatches.length > 0 ? 'playoffs' : 'standings');
@@ -632,6 +657,337 @@ function formatDate(dateString) {
   if (!dateString) return 'Data da definire';
   const date = new Date(dateString);
   return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function exportStandingsGraphic({ currentSeason, currentCategory, currentView, standingsGroups, categoryGroupStageMatches, playoffPhasesMap, sortedScorers }) {
+  const width = 1080;
+  const paddingX = 50;
+  const headerHeight = 220;
+  let contentHeight = 0;
+
+  const showStandings = (currentView === 'standings' || currentView === 'all');
+  const showPlayoffs = (currentView === 'playoffs' || currentView === 'all');
+  const showScorers = (currentView === 'scorers' || currentView === 'all');
+
+  if (showStandings && standingsGroups && standingsGroups.length > 0) {
+    standingsGroups.forEach(g => {
+      const groupMatches = categoryGroupStageMatches.filter(m => m.group_id === g.id);
+      const standings = calculateGroupStandings(g, groupMatches);
+      if (standings.length > 0) {
+        contentHeight += 60; // Group Title
+        contentHeight += 45; // Table Header
+        contentHeight += standings.length * 48; // Rows
+        contentHeight += 35; // Gap
+      }
+    });
+  }
+
+  if (showPlayoffs && playoffPhasesMap && Object.keys(playoffPhasesMap).length > 0) {
+    contentHeight += 40;
+    Object.entries(playoffPhasesMap).forEach(([title, matches]) => {
+      contentHeight += 50; // Sub-phase Header
+      contentHeight += matches.length * 56; // Matches
+      contentHeight += 25; // Gap
+    });
+  }
+
+  if (showScorers && sortedScorers && sortedScorers.length > 0) {
+    const scorersToShow = sortedScorers.slice(0, 15);
+    contentHeight += 60; // Title
+    contentHeight += 45; // Header
+    contentHeight += scorersToShow.length * 48; // Rows
+    contentHeight += 35; // Gap
+  }
+
+  const footerHeight = 80;
+  const totalHeight = Math.max(1200, headerHeight + contentHeight + footerHeight + 40);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+
+  // Background Gradient
+  const bgGradient = ctx.createLinearGradient(0, 0, 0, totalHeight);
+  bgGradient.addColorStop(0, '#0a0e17');
+  bgGradient.addColorStop(0.5, '#121a29');
+  bgGradient.addColorStop(1, '#080b12');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, width, totalHeight);
+
+  // Title & Header
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.font = '800 40px sans-serif';
+  ctx.fillText('TORNEO 3vs3 ISCHITELLA', width / 2, 70);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.font = '600 22px sans-serif';
+  ctx.fillText(`STAGIONE ${currentSeason?.year || '2026'}`, width / 2, 105);
+
+  let viewLabel = 'CLASSIFICA GIRONI';
+  if (currentView === 'playoffs') viewLabel = 'FASI FINALI';
+  else if (currentView === 'scorers') viewLabel = 'CLASSIFICA MARCATORI (MEDIA GOL)';
+  else if (currentView === 'all') viewLabel = 'CLASSIFICHE COMPLETE';
+
+  const badgeText = `${currentCategory.toUpperCase()}  •  ${viewLabel}`;
+  ctx.font = 'bold 22px sans-serif';
+  const badgeW = ctx.measureText(badgeText).width + 60;
+  const badgeY = 135;
+
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect((width - badgeW) / 2, badgeY, badgeW, 44, 22);
+  else ctx.rect((width - badgeW) / 2, badgeY, badgeW, 44);
+  ctx.fill();
+
+  ctx.fillStyle = '#000000';
+  ctx.fillText(badgeText, width / 2, badgeY + 30);
+
+  let currentY = 220;
+  const tableW = width - (paddingX * 2);
+
+  // SECTION 1: STANDINGS
+  if (showStandings && standingsGroups && standingsGroups.length > 0) {
+    standingsGroups.forEach(g => {
+      const groupMatches = categoryGroupStageMatches.filter(m => m.group_id === g.id);
+      const standings = calculateGroupStandings(g, groupMatches);
+      if (standings.length === 0) return;
+
+      // Group Title
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(g.name.toUpperCase(), paddingX, currentY);
+      currentY += 15;
+
+      // Table Header Background
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 42, 6);
+      else ctx.rect(paddingX, currentY, tableW, 42);
+      ctx.fill();
+
+      // Column Positions
+      const colPos = paddingX + 30;
+      const colTeam = paddingX + 80;
+      const colPt = paddingX + 540;
+      const colG = paddingX + 610;
+      const colV = paddingX + 670;
+      const colN = paddingX + 730;
+      const colP = paddingX + 790;
+      const colGF = paddingX + 860;
+      const colGS = paddingX + 920;
+      const colDR = paddingX + 970;
+
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center'; ctx.fillText('POS', colPos, currentY + 27);
+      ctx.textAlign = 'left'; ctx.fillText('SQUADRA', colTeam, currentY + 27);
+      ctx.textAlign = 'center';
+      ctx.fillText('PT', colPt, currentY + 27);
+      ctx.fillText('G', colG, currentY + 27);
+      ctx.fillText('V', colV, currentY + 27);
+      ctx.fillText('N', colN, currentY + 27);
+      ctx.fillText('P', colP, currentY + 27);
+      ctx.fillText('GF', colGF, currentY + 27);
+      ctx.fillText('GS', colGS, currentY + 27);
+      ctx.fillText('DR', colDR, currentY + 27);
+
+      currentY += 46;
+
+      standings.forEach((team, idx) => {
+        ctx.fillStyle = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 44, 4);
+        else ctx.rect(paddingX, currentY, tableW, 44);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 18px sans-serif';
+        if (idx === 0) ctx.fillStyle = '#ffd700';
+        else if (idx === 1) ctx.fillStyle = '#c0c0c0';
+        else if (idx === 2) ctx.fillStyle = '#cd7f32';
+        else ctx.fillStyle = '#ffffff';
+        ctx.fillText(`${idx + 1}`, colPos, currentY + 28);
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        let teamName = team.name.toUpperCase();
+        if (teamName.length > 28) teamName = teamName.substring(0, 26) + '...';
+        ctx.fillText(teamName, colTeam, currentY + 28);
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(`${team.points}`, colPt, currentY + 28);
+
+        ctx.font = '17px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`${team.played}`, colG, currentY + 28);
+        ctx.fillText(`${team.won}`, colV, currentY + 28);
+        ctx.fillText(`${team.drawn}`, colN, currentY + 28);
+        ctx.fillText(`${team.lost}`, colP, currentY + 28);
+        ctx.fillText(`${team.goalsFor}`, colGF, currentY + 28);
+        ctx.fillText(`${team.goalsAgainst}`, colGS, currentY + 28);
+
+        const drStr = team.goalDifference > 0 ? `+${team.goalDifference}` : `${team.goalDifference}`;
+        ctx.fillText(drStr, colDR, currentY + 28);
+
+        currentY += 48;
+      });
+
+      currentY += 30;
+    });
+  }
+
+  // SECTION 2: PLAYOFFS
+  if (showPlayoffs && playoffPhasesMap && Object.keys(playoffPhasesMap).length > 0) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('FASI FINALI', paddingX, currentY);
+    currentY += 20;
+
+    Object.entries(playoffPhasesMap).forEach(([title, pMatches]) => {
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 40, 6);
+      else ctx.rect(paddingX, currentY, tableW, 40);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(title.toUpperCase(), paddingX + 20, currentY + 26);
+      currentY += 46;
+
+      pMatches.forEach((m, idx) => {
+        ctx.fillStyle = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 50, 6);
+        else ctx.rect(paddingX, currentY, tableW, 50);
+        ctx.fill();
+
+        const midX = width / 2;
+        const homeName = (m.home_team?.name || 'TBD').toUpperCase();
+        const awayName = (m.away_team?.name || 'TBD').toUpperCase();
+        let scoreStr = 'VS';
+        if (m.status === 'completed' || m.status === 'live' || m.home_score !== null) {
+          scoreStr = `${m.home_score !== null ? m.home_score : 0} - ${m.away_score !== null ? m.away_score : 0}`;
+        }
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 19px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(homeName, midX - 60, currentY + 32);
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(scoreStr, midX, currentY + 32);
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 19px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(awayName, midX + 60, currentY + 32);
+
+        currentY += 56;
+      });
+
+      currentY += 20;
+    });
+  }
+
+  // SECTION 3: SCORERS
+  if (showScorers && sortedScorers && sortedScorers.length > 0) {
+    const scorersToShow = sortedScorers.slice(0, 15);
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('CLASSIFICA MARCATORI (MEDIA GOL)', paddingX, currentY);
+    currentY += 20;
+
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 42, 6);
+    else ctx.rect(paddingX, currentY, tableW, 42);
+    ctx.fill();
+
+    const colPos = paddingX + 30;
+    const colPlayer = paddingX + 80;
+    const colTeam = paddingX + 480;
+    const colPlayed = paddingX + 820;
+    const colAvg = paddingX + 960;
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('POS', colPos, currentY + 27);
+    ctx.textAlign = 'left'; ctx.fillText('GIOCATORE', colPlayer, currentY + 27);
+    ctx.fillText('SQUADRA', colTeam, currentY + 27);
+    ctx.textAlign = 'center';
+    ctx.fillText('PARTITE', colPlayed, currentY + 27);
+    ctx.fillText('MEDIA GOL', colAvg, currentY + 27);
+
+    currentY += 46;
+
+    scorersToShow.forEach((sc, idx) => {
+      ctx.fillStyle = idx % 2 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.08)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(paddingX, currentY, tableW, 44, 4);
+      else ctx.rect(paddingX, currentY, tableW, 44);
+      ctx.fill();
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      if (idx === 0) ctx.fillStyle = '#ffd700';
+      else if (idx === 1) ctx.fillStyle = '#c0c0c0';
+      else if (idx === 2) ctx.fillStyle = '#cd7f32';
+      else ctx.fillStyle = '#ffffff';
+      ctx.fillText(`${idx + 1}`, colPos, currentY + 28);
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      let pName = sc.name.toUpperCase();
+      if (pName.length > 25) pName = pName.substring(0, 23) + '...';
+      ctx.fillText(pName, colPlayer, currentY + 28);
+
+      let tName = sc.teamName.toUpperCase();
+      if (tName.length > 25) tName = tName.substring(0, 23) + '...';
+      ctx.font = '17px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillText(tName, colTeam, currentY + 28);
+
+      ctx.textAlign = 'center';
+      ctx.font = '17px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`${sc.played} (${sc.goals} GOL)`, colPlayed, currentY + 28);
+
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = '#ffd700';
+      ctx.fillText(`${sc.avgGoals.toFixed(2)}`, colAvg, currentY + 28);
+
+      currentY += 48;
+    });
+
+    currentY += 30;
+  }
+
+  // Footer Branding
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.font = '18px sans-serif';
+  ctx.fillText('3vs3ischitella.it  •  #3vs3Ischitella', width / 2, totalHeight - 35);
+
+  const link = document.createElement('a');
+  const filenameCat = currentCategory.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const filenameView = currentView.toLowerCase();
+  link.download = `3vs3_Ischitella_Classifica_${filenameCat}_${filenameView}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 
