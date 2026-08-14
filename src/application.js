@@ -222,3 +222,106 @@ export async function renderCurrentPage() {
 
 // Start the app
 init();
+initPWA();
+
+// PWA Installation & Service Worker Registration
+function initPWA() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
+      }).catch((err) => {
+        console.warn('[PWA] ServiceWorker registration failed:', err);
+      });
+    });
+  }
+
+  // Check if app is already running in standalone mode (installed)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) return;
+
+  // Check if user previously dismissed prompt
+  if (sessionStorage.getItem('pwa_prompt_dismissed') === 'true') return;
+
+  // Handle Android / Chromium PWA Prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showAndroidInstallBanner(deferredPrompt);
+  });
+
+  // Handle iOS Safari Installation Guide
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (isIOS && isSafari && !isStandalone) {
+    setTimeout(() => {
+      showIOSInstallBanner();
+    }, 2000);
+  }
+}
+
+function showAndroidInstallBanner(deferredPrompt) {
+  if (document.getElementById('pwa-install-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.className = 'pwa-banner';
+  banner.innerHTML = `
+    <div class="pwa-banner-content">
+      <img src="/icon-192.png" alt="3vs3 Logo" class="pwa-banner-logo">
+      <div class="pwa-banner-text">
+        <strong>Installa l'App 3vs3 Ischitella</strong>
+        <span>Aggiungi alla Home per un accesso rapido ed esperienza nativa</span>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="pwa-install-btn" class="btn btn-primary btn-small" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; font-weight: bold;">📲 Installa</button>
+      <button id="pwa-dismiss-btn" class="btn-close-sm" title="Chiudi">✕</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('[PWA] User choice outcome:', outcome);
+      deferredPrompt = null;
+    }
+    banner.remove();
+  });
+
+  document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
+    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
+    banner.remove();
+  });
+}
+
+function showIOSInstallBanner() {
+  if (document.getElementById('pwa-install-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.className = 'pwa-banner';
+  banner.innerHTML = `
+    <div class="pwa-banner-content">
+      <img src="/apple-touch-icon.png" alt="3vs3 Logo" class="pwa-banner-logo">
+      <div class="pwa-banner-text">
+        <strong>Installa l'App su iPhone</strong>
+        <span>Premi <strong>Condividi 📤</strong> in Safari e poi <strong>"Aggiungi alla schermata Home ➕"</strong></span>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="pwa-dismiss-btn" class="btn-close-sm" title="Chiudi">✕</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
+    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
+    banner.remove();
+  });
+}

@@ -1,0 +1,32 @@
+{
+  "short_name": "3vs3 Ischitella",
+  "name": "Torneo 3vs3 Ischitella",
+  "description": "Applicazione Ufficiale Torneo di Calcio 3vs3 Ischitella - Risultati, Classifiche, Partite in Diretta e Marcatori",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0a0e17",
+  "theme_color": "#ffd700",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "it-IT",
+  "categories": ["sports", "entertainment"]
+}
