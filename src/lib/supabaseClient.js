@@ -14,6 +14,7 @@ export let currentProfile = null;
 // Initialize auth state
 export async function initAuth(onAuthChange) {
     console.log('Supabase: initAuth started');
+    keepSupabaseAlive();
     const { data: { session } } = await supabase.auth.getSession();
     console.log('Supabase: getSession result', session ? 'Session found' : 'No session');
 
@@ -90,4 +91,14 @@ export async function uploadFile(bucket, file, path) {
         .getPublicUrl(path);
 
     return publicUrl;
+}
+
+// Keep Supabase Database Active Heartbeat
+export async function keepSupabaseAlive() {
+    try {
+        await supabase.from('seasons').select('id').limit(1);
+        console.log('[Supabase Heartbeat] Database active ping sent');
+    } catch (e) {
+        console.warn('[Supabase Heartbeat] Ping error:', e);
+    }
 }
