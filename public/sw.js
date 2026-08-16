@@ -1,4 +1,4 @@
-const CACHE_NAME = '3vs3-ischitella-v1';
+const CACHE_NAME = '3vs3-ischitella-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -10,12 +10,12 @@ const STATIC_ASSETS = [
   '/assets/app_background_v2.jpg'
 ];
 
-// Install Event - Cache Static Assets
+// Install Event - Pre-cache essential shell assets
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching static assets');
+      console.log('[ServiceWorker] Pre-caching static assets shell');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[ServiceWorker] Pre-cache warning:', err);
       });
@@ -23,7 +23,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event - Clean old caches
+// Activate Event - Clean old caches instantly
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -43,29 +43,28 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Always use Network First for Supabase API and dynamic data
-  if (url.origin.includes('supabase') || event.request.method !== 'GET') {
+  // Network-First for Supabase API, dynamic queries, and JS bundle scripts
+  if (url.origin.includes('supabase') || url.pathname.endsWith('.js') || event.request.method !== 'GET') {
     event.respondWith(
-      fetch(event.request).catch(() => {
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
         return caches.match(event.request);
       })
     );
     return;
   }
 
-  // Cache First with Network Fallback for static assets
+  // Cache First for static images and assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Refresh cache in background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-        }).catch(() => {/* Ignore background fetch failure */});
-
         return cachedResponse;
       }
 
@@ -81,7 +80,6 @@ self.addEventListener('fetch', (event) => {
 
         return networkResponse;
       }).catch(() => {
-        // Fallback for navigation requests when offline
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
