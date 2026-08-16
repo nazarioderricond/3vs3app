@@ -39,8 +39,8 @@ export async function renderMatchDetailsPage(params) {
     `)
     .eq('match_id', matchId);
 
-  const homeScorers = scorers?.filter(s => String(s.team_id) === String(match.home_team_id)) || [];
-  const awayScorers = scorers?.filter(s => String(s.team_id) === String(match.away_team_id)) || [];
+  const homeScorers = scorers?.filter(s => String(s.team_id) === String(match.home_team_id) && s.player_id !== null && s.goals > 0) || [];
+  const awayScorers = scorers?.filter(s => String(s.team_id) === String(match.away_team_id) && s.player_id !== null && s.goals > 0) || [];
 
   page.innerHTML = `
     <div class="glass-card text-center mb-xl">
