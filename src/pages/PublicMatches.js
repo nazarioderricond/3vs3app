@@ -663,8 +663,23 @@ export function openMatchPollModal(match, onVoteSubmitted) {
 
   async function updateModalStats() {
     const stats = await getMatchPredictions(match, true);
-    const currentVote = getUserVoteForMatch(match.id);
+    let currentVote = getUserVoteForMatch(match.id);
+
+    // Self-healing: if localStorage recorded a vote previously but Cloud DB has 0 votes, clear the stale local lock
+    if (currentVote && stats.totalVotes === 0) {
+      const votes = JSON.parse(localStorage.getItem('user_match_votes') || '{}');
+      delete votes[match.id];
+      localStorage.setItem('user_match_votes', JSON.stringify(votes));
+      currentVote = null;
+    }
+
     const hasVoted = Boolean(currentVote);
+    const badge = document.getElementById('poll-voted-badge');
+    if (badge) {
+      if (hasVoted) badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }
+
     const container = document.getElementById('poll-modal-options');
     if (!container) return;
 
