@@ -575,7 +575,7 @@ async function exportMatchesGraphic(dateTitle, matches) {
 
 export async function updateMatchCardPollUI(box, match) {
   if (!box || !match) return;
-  const stats = await getMatchPredictions(match.id);
+  const stats = await getMatchPredictions(match, true);
 
   const voterCountEl = box.querySelector('.poll-voter-count');
   if (voterCountEl) voterCountEl.textContent = `(${stats.totalVotes} ${stats.totalVotes === 1 ? 'voto' : 'voti'})`;
@@ -662,7 +662,7 @@ export function openMatchPollModal(match, onVoteSubmitted) {
   });
 
   async function updateModalStats() {
-    const stats = await getMatchPredictions(match.id);
+    const stats = await getMatchPredictions(match, true);
     const currentVote = getUserVoteForMatch(match.id);
     const hasVoted = Boolean(currentVote);
     const container = document.getElementById('poll-modal-options');
@@ -735,7 +735,7 @@ export function openMatchPollModal(match, onVoteSubmitted) {
       container.querySelectorAll('.poll-option-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const voteChoice = e.currentTarget.dataset.vote;
-          await submitMatchPrediction(match.id, voteChoice);
+          await submitMatchPrediction(match, voteChoice);
           const badge = document.getElementById('poll-voted-badge');
           if (badge) badge.classList.remove('hidden');
           await updateModalStats();

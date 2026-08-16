@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient.js';
 
 // Memory cache for prediction stats
 const predictionsCache = new Map();
-const CACHE_TTL_MS = 3000; // 3 seconds cache for fast updates
+const CACHE_TTL_MS = 2000; // 2 seconds cache for fast updates
 
 // Get or generate a persistent unique voter device token
 export function getVoterToken() {
@@ -42,14 +42,29 @@ export function isQualifyingMatchForPoll(match) {
 }
 
 // Get prediction tally for a match from Supabase Cloud DB
-export async function getMatchPredictions(match, forceRefresh = false) {
-  const matchId = typeof match === 'object' ? match.id : match;
+export async function getMatchPredictions(matchInput, forceRefresh = false) {
+  const matchId = typeof matchInput === 'object' ? matchInput.id : matchInput;
   const now = Date.now();
 
   if (!forceRefresh && predictionsCache.has(matchId)) {
     const cached = predictionsCache.get(matchId);
     if (now - cached.timestamp < CACHE_TTL_MS) {
       return cached.data;
+    }
+  }
+
+  let homeTeamId = typeof matchInput === 'object' ? matchInput.home_team_id : null;
+  let awayTeamId = typeof matchInput === 'object' ? matchInput.away_team_id : null;
+
+  if (!homeTeamId || !awayTeamId) {
+    const { data: mData } = await supabase
+      .from('matches')
+      .select('home_team_id, away_team_id')
+      .eq('id', matchId)
+      .maybeSingle();
+    if (mData) {
+      homeTeamId = mData.home_team_id;
+      awayTeamId = mData.away_team_id;
     }
   }
 
@@ -68,25 +83,10 @@ export async function getMatchPredictions(match, forceRefresh = false) {
       .is('player_id', null);
 
     if (!error && pollVotes) {
-      let homeTeamId = typeof match === 'object' ? match.home_team_id : null;
-      let awayTeamId = typeof match === 'object' ? match.away_team_id : null;
-
-      if (!homeTeamId || !awayTeamId) {
-        const { data: mData } = await supabase
-          .from('matches')
-          .select('home_team_id, away_team_id')
-          .eq('id', matchId)
-          .single();
-        if (mData) {
-          homeTeamId = mData.home_team_id;
-          awayTeamId = mData.away_team_id;
-        }
-      }
-
       pollVotes.forEach(pv => {
-        if (pv.team_id && String(pv.team_id) === String(homeTeamId)) {
+        if (pv.team_id && homeTeamId && String(pv.team_id) === String(homeTeamId)) {
           homeVotes++;
-        } else if (pv.team_id && String(pv.team_id) === String(awayTeamId)) {
+        } else if (pv.team_id && awayTeamId && String(pv.team_id) === String(awayTeamId)) {
           awayVotes++;
         } else {
           drawVotes++;
@@ -119,33 +119,31 @@ export async function getMatchPredictions(match, forceRefresh = false) {
 }
 
 // Submit a vote for a match (Enforces 1 vote per device & saves to Supabase Cloud DB)
-export async function submitMatchPrediction(match, prediction) {
-  const matchId = typeof match === 'object' ? match.id : match;
+export async function submitMatchPrediction(matchInput, prediction) {
+  const matchId = typeof matchInput === 'object' ? matchInput.id : matchInput;
   const existingVote = getUserVoteForMatch(matchId);
 
   if (existingVote) {
     console.warn('[Poll] User has already voted for match:', matchId);
-    return await getMatchPredictions(match, true);
+    return await getMatchPredictions(matchInput, true);
   }
 
-  saveUserVoteForMatch(matchId, prediction);
-
-  let targetTeamId = null;
-  let homeTeamId = typeof match === 'object' ? match.home_team_id : null;
-  let awayTeamId = typeof match === 'object' ? match.away_team_id : null;
+  let homeTeamId = typeof matchInput === 'object' ? matchInput.home_team_id : null;
+  let awayTeamId = typeof matchInput === 'object' ? matchInput.away_team_id : null;
 
   if (!homeTeamId || !awayTeamId) {
     const { data: mData } = await supabase
       .from('matches')
       .select('home_team_id, away_team_id')
       .eq('id', matchId)
-      .single();
+      .maybeSingle();
     if (mData) {
       homeTeamId = mData.home_team_id;
       awayTeamId = mData.away_team_id;
     }
   }
 
+  let targetTeamId = null;
   if (prediction === 'home') {
     targetTeamId = homeTeamId;
   } else if (prediction === 'away') {
@@ -154,17 +152,24 @@ export async function submitMatchPrediction(match, prediction) {
     targetTeamId = null; // Draw
   }
 
+  saveUserVoteForMatch(matchId, prediction);
+
   try {
-    await supabase.from('match_scorers').insert({
+    const { data, error } = await supabase.from('match_scorers').insert({
       match_id: matchId,
       team_id: targetTeamId,
       player_id: null,
       goals: 0
-    });
-    console.log('[Poll] Vote successfully saved to Cloud Supabase DB!');
+    }).select();
+
+    if (error) {
+      console.error('[Poll] Error inserting vote to Supabase:', error);
+    } else {
+      console.log('[Poll] Vote successfully saved to Cloud Supabase DB:', data);
+    }
   } catch (e) {
-    console.error('[Poll] Error inserting vote to Supabase:', e);
+    console.error('[Poll] Exception inserting vote to Supabase:', e);
   }
 
-  return await getMatchPredictions(match, true);
+  return await getMatchPredictions(matchInput, true);
 }
