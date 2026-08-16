@@ -304,7 +304,7 @@ export async function renderPublicMatchesPage() {
         }).join('');
 
         // Populate poll stats and event listeners for cards
-        const pollBoxes = matchesContainer.querySelectorAll('.match-poll-summary-box');
+        const pollBoxes = matchesContent.querySelectorAll('.match-poll-summary-box');
         pollBoxes.forEach(async (box) => {
           const mId = box.dataset.pollMatchId;
           const mObj = allMatches.find(m => String(m.id) === String(mId));
@@ -314,7 +314,7 @@ export async function renderPublicMatchesPage() {
         });
 
         // Event Delegation for "🗳️ Vota Ora" buttons
-        matchesContainer.querySelectorAll('.open-poll-btn').forEach(btn => {
+        matchesContent.querySelectorAll('.open-poll-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -322,7 +322,7 @@ export async function renderPublicMatchesPage() {
             const mObj = allMatches.find(m => String(m.id) === String(mId));
             if (mObj) {
               openMatchPollModal(mObj, () => {
-                const box = matchesContainer.querySelector(`.match-poll-summary-box[data-poll-match-id="${mId}"]`);
+                const box = matchesContent.querySelector(`.match-poll-summary-box[data-poll-match-id="${mId}"]`);
                 if (box) updateMatchCardPollUI(box, mObj);
               });
             }
@@ -648,8 +648,8 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         <div class="text-center p-md"><span class="spinner"></span></div>
       </div>
 
-      <div id="poll-voted-badge" class="text-center font-bold text-yellow ${getUserVoteForMatch(match.id) ? '' : 'hidden'}" style="font-size: 0.85rem;">
-        ✓ Voto registrato! Puoi aggiornare la tua scelta.
+      <div id="poll-voted-badge" class="text-center font-bold text-yellow ${getUserVoteForMatch(match.id) ? '' : 'hidden'}" style="font-size: 0.85rem; padding: 0.4rem; background: rgba(255, 215, 0, 0.1); border-radius: 8px;">
+        ✓ Voto espresso! È consentito 1 solo voto per sondaggio.
       </div>
     </div>
   `;
@@ -664,15 +664,17 @@ export function openMatchPollModal(match, onVoteSubmitted) {
   async function updateModalStats() {
     const stats = await getMatchPredictions(match.id);
     const currentVote = getUserVoteForMatch(match.id);
+    const hasVoted = Boolean(currentVote);
     const container = document.getElementById('poll-modal-options');
     if (!container) return;
 
     container.innerHTML = `
       <!-- HOME OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'home' ? 'voted-active' : ''}" data-vote="home" style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'home' ? 'voted-active' : ''}" data-vote="home" ${hasVoted ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'home' ? '#22c55e' : 'rgba(255,255,255,0.15)'};
-        background: ${currentVote === 'home' ? 'rgba(34, 197, 94, 0.18)' : 'rgba(255,255,255,0.05)'};
-        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        background: ${currentVote === 'home' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255,255,255,0.05)'};
+        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${hasVoted && currentVote !== 'home' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🛡️</span>
@@ -680,17 +682,18 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${stats.homePct}%</span>
-          <span class="btn-small" style="background: #22c55e; color: #000; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'home' ? '✓ Votato' : 'Vota'}
+          <span class="btn-small" style="background: ${currentVote === 'home' ? '#22c55e' : 'rgba(255,255,255,0.15)'}; color: ${currentVote === 'home' ? '#000' : '#fff'}; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'home' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
           </span>
         </div>
       </button>
 
       <!-- DRAW OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'draw' ? 'voted-active' : ''}" data-vote="draw" style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'draw' ? 'voted-active' : ''}" data-vote="draw" ${hasVoted ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'draw' ? '#eab308' : 'rgba(255,255,255,0.15)'};
-        background: ${currentVote === 'draw' ? 'rgba(234, 179, 8, 0.18)' : 'rgba(255,255,255,0.05)'};
-        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        background: ${currentVote === 'draw' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255,255,255,0.05)'};
+        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${hasVoted && currentVote !== 'draw' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🤝</span>
@@ -698,17 +701,18 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #eab308;">${stats.drawPct}%</span>
-          <span class="btn-small" style="background: #eab308; color: #000; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'draw' ? '✓ Votato' : 'Vota'}
+          <span class="btn-small" style="background: ${currentVote === 'draw' ? '#eab308' : 'rgba(255,255,255,0.15)'}; color: ${currentVote === 'draw' ? '#000' : '#fff'}; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'draw' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
           </span>
         </div>
       </button>
 
       <!-- AWAY OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'away' ? 'voted-active' : ''}" data-vote="away" style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'away' ? 'voted-active' : ''}" data-vote="away" ${hasVoted ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'away' ? '#3b82f6' : 'rgba(255,255,255,0.15)'};
-        background: ${currentVote === 'away' ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255,255,255,0.05)'};
-        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        background: ${currentVote === 'away' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.05)'};
+        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${hasVoted && currentVote !== 'away' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🛡️</span>
@@ -716,8 +720,8 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #3b82f6;">${stats.awayPct}%</span>
-          <span class="btn-small" style="background: #3b82f6; color: #fff; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'away' ? '✓ Votato' : 'Vota'}
+          <span class="btn-small" style="background: ${currentVote === 'away' ? '#3b82f6' : 'rgba(255,255,255,0.15)'}; color: #fff; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'away' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
           </span>
         </div>
       </button>
@@ -727,16 +731,18 @@ export function openMatchPollModal(match, onVoteSubmitted) {
       </div>
     `;
 
-    container.querySelectorAll('.poll-option-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const voteChoice = e.currentTarget.dataset.vote;
-        await submitMatchPrediction(match.id, voteChoice);
-        const badge = document.getElementById('poll-voted-badge');
-        if (badge) badge.classList.remove('hidden');
-        await updateModalStats();
-        if (onVoteSubmitted) onVoteSubmitted();
+    if (!hasVoted) {
+      container.querySelectorAll('.poll-option-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const voteChoice = e.currentTarget.dataset.vote;
+          await submitMatchPrediction(match.id, voteChoice);
+          const badge = document.getElementById('poll-voted-badge');
+          if (badge) badge.classList.remove('hidden');
+          await updateModalStats();
+          if (onVoteSubmitted) onVoteSubmitted();
+        });
       });
-    });
+    }
   }
 
   updateModalStats();

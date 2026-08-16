@@ -1,5 +1,9 @@
 import { supabase } from './supabaseClient.js';
 
+// Memory cache for prediction stats to make mobile PWA ultra-fast
+const predictionsCache = new Map();
+const CACHE_TTL_MS = 8000; // 8 seconds cache
+
 // Get or generate a persistent unique voter device token
 export function getVoterToken() {
   let token = localStorage.getItem('voter_device_token');
@@ -37,8 +41,16 @@ export function isQualifyingMatchForPoll(match) {
   );
 }
 
-// Get prediction tally for a match
-export async function getMatchPredictions(matchId) {
+// Get prediction tally for a match (with fast memory caching)
+export async function getMatchPredictions(matchId, forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && predictionsCache.has(matchId)) {
+    const cached = predictionsCache.get(matchId);
+    if (now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   let homeVotes = 0;
   let drawVotes = 0;
   let awayVotes = 0;
@@ -77,7 +89,7 @@ export async function getMatchPredictions(matchId) {
   const drawPct = totalVotes > 0 ? Math.round((drawVotes / totalVotes) * 100) : 34;
   const awayPct = totalVotes > 0 ? Math.max(0, 100 - homePct - drawPct) : 33;
 
-  return {
+  const result = {
     matchId,
     homeVotes,
     drawVotes,
@@ -87,10 +99,20 @@ export async function getMatchPredictions(matchId) {
     drawPct,
     awayPct
   };
+
+  predictionsCache.set(matchId, { timestamp: now, data: result });
+  return result;
 }
 
-// Submit a vote for a match
+// Submit a vote for a match - STRICT 1-VOTE ENFORCEMENT
 export async function submitMatchPrediction(matchId, prediction) {
+  const existingVote = getUserVoteForMatch(matchId);
+  if (existingVote) {
+    // Strictly prevent double voting
+    console.warn('[Poll] User has already voted for match:', matchId);
+    return await getMatchPredictions(matchId);
+  }
+
   const voterToken = getVoterToken();
   saveUserVoteForMatch(matchId, prediction);
 
@@ -110,5 +132,5 @@ export async function submitMatchPrediction(matchId, prediction) {
     // Ignore error if table not created yet
   }
 
-  return await getMatchPredictions(matchId);
+  return await getMatchPredictions(matchId, true);
 }

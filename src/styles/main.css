@@ -50,6 +50,24 @@
   --font-body: 'Roboto', sans-serif;
 }
 
+/* Mobile PWA & Touch Performance Optimizations */
+* {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+.glass-card, .match-card, .btn, .navbar {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
 /* ============================================
    RESET & BASE STYLES
    ============================================ */
