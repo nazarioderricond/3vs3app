@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { TOURNAMENT_CATEGORIES, PHASE_LABELS, formatPhase } from '../lib/constants.js';
+import { isQualifyingMatchForPoll, getMatchPredictions, submitMatchPrediction, getUserVoteForMatch } from '../lib/predictions.js';
 
 function getStatusColor(status) {
     switch (status) {
@@ -269,6 +270,31 @@ export async function renderPublicMatchesPage() {
                       </div>
                     ` : ''}
                 </a>
+
+                ${isQualifyingMatchForPoll(match) ? `
+                  <div class="match-poll-summary-box mt-sm pt-xs" data-poll-match-id="${match.id}" style="border-top: 1px dashed rgba(255, 215, 0, 0.3); font-size: 0.85rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; gap: 0.5rem; flex-wrap: wrap;">
+                      <span style="font-weight: 700; color: var(--color-yellow); display: flex; align-items: center; gap: 0.35rem;">
+                        📊 Pronostici Tifosi <span class="poll-voter-count text-muted" style="font-weight: normal; font-size: 0.75rem;">(Caricamento...)</span>
+                      </span>
+                      <button class="open-poll-btn btn-small" data-match-id="${match.id}" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; background: var(--color-yellow); color: #000; font-weight: 800; border-radius: 20px; border: none; cursor: pointer;">
+                        🗳️ Vota Ora
+                      </button>
+                    </div>
+
+                    <div class="poll-progress-bar-container" style="height: 9px; border-radius: 6px; overflow: hidden; display: flex; background: rgba(255,255,255,0.1); margin-bottom: 0.35rem;">
+                      <div class="poll-bar-home" style="width: 33%; background: #22c55e; transition: width 0.5s ease;" title="Squadra Casa"></div>
+                      <div class="poll-bar-draw" style="width: 34%; background: #eab308; transition: width 0.5s ease;" title="Pareggio"></div>
+                      <div class="poll-bar-away" style="width: 33%; background: #3b82f6; transition: width 0.5s ease;" title="Squadra Ospite"></div>
+                    </div>
+
+                    <div class="poll-labels-row" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: rgba(255,255,255,0.85); font-weight: 600;">
+                      <span class="poll-label-home" style="color: #22c55e;">33% Casa</span>
+                      <span class="poll-label-draw" style="color: #eab308;">34% X</span>
+                      <span class="poll-label-away" style="color: #3b82f6;">33% Ospite</span>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             `;
             }).join('')}
@@ -276,6 +302,32 @@ export async function renderPublicMatchesPage() {
         </div>
       `;
         }).join('');
+
+        // Populate poll stats and event listeners for cards
+        const pollBoxes = matchesContainer.querySelectorAll('.match-poll-summary-box');
+        pollBoxes.forEach(async (box) => {
+          const mId = box.dataset.pollMatchId;
+          const mObj = allMatches.find(m => String(m.id) === String(mId));
+          if (mId && mObj) {
+            updateMatchCardPollUI(box, mObj);
+          }
+        });
+
+        // Event Delegation for "🗳️ Vota Ora" buttons
+        matchesContainer.querySelectorAll('.open-poll-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const mId = btn.dataset.matchId;
+            const mObj = allMatches.find(m => String(m.id) === String(mId));
+            if (mObj) {
+              openMatchPollModal(mObj, () => {
+                const box = matchesContainer.querySelector(`.match-poll-summary-box[data-poll-match-id="${mId}"]`);
+                if (box) updateMatchCardPollUI(box, mObj);
+              });
+            }
+          });
+        });
     }
 
     // Handle dropdown changes
@@ -519,5 +571,174 @@ async function exportMatchesGraphic(dateTitle, matches) {
     link.download = `3vs3_Ischitella_${filenameDate}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
+}
+
+export async function updateMatchCardPollUI(box, match) {
+  if (!box || !match) return;
+  const stats = await getMatchPredictions(match.id);
+
+  const voterCountEl = box.querySelector('.poll-voter-count');
+  if (voterCountEl) voterCountEl.textContent = `(${stats.totalVotes} ${stats.totalVotes === 1 ? 'voto' : 'voti'})`;
+
+  const barHome = box.querySelector('.poll-bar-home');
+  const barDraw = box.querySelector('.poll-bar-draw');
+  const barAway = box.querySelector('.poll-bar-away');
+
+  if (barHome) barHome.style.width = `${stats.homePct}%`;
+  if (barDraw) barDraw.style.width = `${stats.drawPct}%`;
+  if (barAway) barAway.style.width = `${stats.awayPct}%`;
+
+  const lblHome = box.querySelector('.poll-label-home');
+  const lblDraw = box.querySelector('.poll-label-draw');
+  const lblAway = box.querySelector('.poll-label-away');
+
+  const homeShort = (match.home_team?.name || 'Casa');
+  const awayShort = (match.away_team?.name || 'Ospite');
+
+  if (lblHome) lblHome.textContent = `${stats.homePct}% ${homeShort.length > 11 ? homeShort.substring(0, 9) + '..' : homeShort}`;
+  if (lblDraw) lblDraw.textContent = `${stats.drawPct}% X`;
+  if (lblAway) lblAway.textContent = `${stats.awayPct}% ${awayShort.length > 11 ? awayShort.substring(0, 9) + '..' : awayShort}`;
+}
+
+export function openMatchPollModal(match, onVoteSubmitted) {
+  const existing = document.getElementById('poll-modal-overlay');
+  if (existing) existing.remove();
+
+  const homeName = match.home_team?.name || 'Squadra Casa';
+  const awayName = match.away_team?.name || 'Squadra Ospite';
+  const matchPhase = match.group?.name || formatPhase(match.phase);
+
+  const modal = document.createElement('div');
+  modal.id = 'poll-modal-overlay';
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+    padding: 1rem; animation: fadeIn 0.3s ease forwards;
+  `;
+
+  modal.innerHTML = `
+    <div class="glass-card p-lg" style="
+      max-width: 500px; width: 100%; border: 2px solid var(--color-yellow);
+      border-radius: 20px; box-shadow: 0 0 35px rgba(255, 215, 0, 0.35);
+      position: relative; background: linear-gradient(135deg, rgba(20,20,35,0.98) 0%, rgba(10,10,18,0.99) 100%);
+    ">
+      <button id="close-poll-modal" style="
+        position: absolute; top: 15px; right: 20px; background: transparent;
+        border: none; color: rgba(255,255,255,0.6); font-size: 1.5rem; cursor: pointer;
+      ">✕</button>
+
+      <div class="text-center mb-md">
+        <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">🏆 🗳️</div>
+        <h3 class="m-0 text-yellow" style="font-size: 1.3rem; font-weight: 800; text-transform: uppercase;">
+          Sondaggio Pronostico
+        </h3>
+        <p class="text-muted mt-xs mb-0" style="font-size: 0.85rem;">
+          Seniores • ${matchPhase}
+        </p>
+      </div>
+
+      <div class="text-center mb-lg p-sm" style="background: rgba(255,255,255,0.05); border-radius: 12px;">
+        <h4 style="margin: 0; font-size: 1.05rem; color: #fff; font-weight: 700;">
+          Chi vincerà tra <span style="color: var(--color-yellow);">${homeName}</span> e <span style="color: var(--color-yellow);">${awayName}</span>?
+        </h4>
+      </div>
+
+      <div id="poll-modal-options" class="flex flex-col gap-md mb-md">
+        <div class="text-center p-md"><span class="spinner"></span></div>
+      </div>
+
+      <div id="poll-voted-badge" class="text-center font-bold text-yellow ${getUserVoteForMatch(match.id) ? '' : 'hidden'}" style="font-size: 0.85rem;">
+        ✓ Voto registrato! Puoi aggiornare la tua scelta.
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById('close-poll-modal').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  async function updateModalStats() {
+    const stats = await getMatchPredictions(match.id);
+    const currentVote = getUserVoteForMatch(match.id);
+    const container = document.getElementById('poll-modal-options');
+    if (!container) return;
+
+    container.innerHTML = `
+      <!-- HOME OPTION -->
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'home' ? 'voted-active' : ''}" data-vote="home" style="
+        border: 1.5px solid ${currentVote === 'home' ? '#22c55e' : 'rgba(255,255,255,0.15)'};
+        background: ${currentVote === 'home' ? 'rgba(34, 197, 94, 0.18)' : 'rgba(255,255,255,0.05)'};
+        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+      ">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.2rem;">🛡️</span>
+          <strong style="color: #fff; font-size: 0.95rem;">${homeName}</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${stats.homePct}%</span>
+          <span class="btn-small" style="background: #22c55e; color: #000; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'home' ? '✓ Votato' : 'Vota'}
+          </span>
+        </div>
+      </button>
+
+      <!-- DRAW OPTION -->
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'draw' ? 'voted-active' : ''}" data-vote="draw" style="
+        border: 1.5px solid ${currentVote === 'draw' ? '#eab308' : 'rgba(255,255,255,0.15)'};
+        background: ${currentVote === 'draw' ? 'rgba(234, 179, 8, 0.18)' : 'rgba(255,255,255,0.05)'};
+        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+      ">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.2rem;">🤝</span>
+          <strong style="color: #fff; font-size: 0.95rem;">PAREGGIO (X)</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.1rem; font-weight: 800; color: #eab308;">${stats.drawPct}%</span>
+          <span class="btn-small" style="background: #eab308; color: #000; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'draw' ? '✓ Votato' : 'Vota'}
+          </span>
+        </div>
+      </button>
+
+      <!-- AWAY OPTION -->
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'away' ? 'voted-active' : ''}" data-vote="away" style="
+        border: 1.5px solid ${currentVote === 'away' ? '#3b82f6' : 'rgba(255,255,255,0.15)'};
+        background: ${currentVote === 'away' ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255,255,255,0.05)'};
+        cursor: pointer; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+      ">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.2rem;">🛡️</span>
+          <strong style="color: #fff; font-size: 0.95rem;">${awayName}</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.1rem; font-weight: 800; color: #3b82f6;">${stats.awayPct}%</span>
+          <span class="btn-small" style="background: #3b82f6; color: #fff; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
+            ${currentVote === 'away' ? '✓ Votato' : 'Vota'}
+          </span>
+        </div>
+      </button>
+
+      <div class="text-center text-muted text-xs mt-xs">
+        Totale Voti: <strong>${stats.totalVotes}</strong>
+      </div>
+    `;
+
+    container.querySelectorAll('.poll-option-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const voteChoice = e.currentTarget.dataset.vote;
+        await submitMatchPrediction(match.id, voteChoice);
+        const badge = document.getElementById('poll-voted-badge');
+        if (badge) badge.classList.remove('hidden');
+        await updateModalStats();
+        if (onVoteSubmitted) onVoteSubmitted();
+      });
+    });
+  }
+
+  updateModalStats();
 }
 

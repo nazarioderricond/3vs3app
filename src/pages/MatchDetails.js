@@ -1,5 +1,7 @@
 import { supabase, isAdmin } from '../lib/supabaseClient.js';
 import { formatPhase } from '../lib/constants.js';
+import { isQualifyingMatchForPoll, getMatchPredictions } from '../lib/predictions.js';
+import { openMatchPollModal } from './PublicMatches.js';
 
 export async function renderMatchDetailsPage(params) {
   const matchId = params.id;
@@ -76,6 +78,31 @@ export async function renderMatchDetailsPage(params) {
       ` : ''}
     </div>
 
+    ${isQualifyingMatchForPoll(match) ? `
+      <div id="match-details-poll-card" class="glass-card mb-xl p-lg text-center" style="border: 1.5px solid var(--color-yellow); border-radius: 16px;">
+        <h3 class="m-0 text-yellow mb-xs font-bold" style="text-transform: uppercase;">📊 Sondaggio Pronostico Tifosi</h3>
+        <p class="text-muted text-sm mb-md">Chi vincerà la partita secondo te?</p>
+        
+        <div class="mb-md">
+          <div style="height: 12px; border-radius: 6px; overflow: hidden; display: flex; background: rgba(255,255,255,0.1); margin-bottom: 0.5rem;">
+            <div id="dpoll-bar-home" style="width: 33%; background: #22c55e; transition: width 0.5s ease;"></div>
+            <div id="dpoll-bar-draw" style="width: 34%; background: #eab308; transition: width 0.5s ease;"></div>
+            <div id="dpoll-bar-away" style="width: 33%; background: #3b82f6; transition: width 0.5s ease;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: #fff;">
+            <span id="dpoll-lbl-home" style="color: #22c55e;">33% ${match.home_team.name}</span>
+            <span id="dpoll-lbl-draw" style="color: #eab308;">34% Pareggio</span>
+            <span id="dpoll-lbl-away" style="color: #3b82f6;">33% ${match.away_team.name}</span>
+          </div>
+        </div>
+
+        <button id="open-details-poll-btn" class="btn btn-primary font-bold" style="padding: 0.6rem 1.5rem; font-size: 0.95rem; border-radius: 25px; cursor: pointer;">
+          🗳️ Vota la tua Favorita
+        </button>
+      </div>
+    ` : ''}
+
     ${(match.home_score !== null || match.status === 'completed' || (scorers && scorers.length > 0)) ? `
       <div class="glass-card">
         <h3 class="text-center mb-lg border-bottom-yellow">Tabellino Marcatori</h3>
@@ -104,6 +131,36 @@ export async function renderMatchDetailsPage(params) {
       </div>
     ` : ''}
   `;
+
+  if (isQualifyingMatchForPoll(match)) {
+    const pollCard = page.querySelector('#match-details-poll-card');
+    if (pollCard) {
+      const loadDetailsPollStats = async () => {
+        const stats = await getMatchPredictions(match.id);
+        const bH = pollCard.querySelector('#dpoll-bar-home');
+        const bD = pollCard.querySelector('#dpoll-bar-draw');
+        const bA = pollCard.querySelector('#dpoll-bar-away');
+        if (bH) bH.style.width = `${stats.homePct}%`;
+        if (bD) bD.style.width = `${stats.drawPct}%`;
+        if (bA) bA.style.width = `${stats.awayPct}%`;
+
+        const lH = pollCard.querySelector('#dpoll-lbl-home');
+        const lD = pollCard.querySelector('#dpoll-lbl-draw');
+        const lA = pollCard.querySelector('#dpoll-lbl-away');
+        if (lH) lH.textContent = `${stats.homePct}% ${match.home_team.name}`;
+        if (lD) lD.textContent = `${stats.drawPct}% Pareggio`;
+        if (lA) lA.textContent = `${stats.awayPct}% ${match.away_team.name}`;
+      };
+
+      loadDetailsPollStats();
+
+      pollCard.querySelector('#open-details-poll-btn').addEventListener('click', () => {
+        openMatchPollModal(match, () => {
+          loadDetailsPollStats();
+        });
+      });
+    }
+  }
 
   return page;
 }
