@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { TOURNAMENT_CATEGORIES, PHASE_LABELS, formatPhase } from '../lib/constants.js';
-import { isQualifyingMatchForPoll, getMatchPredictions, submitMatchPrediction, getUserVoteForMatch } from '../lib/predictions.js';
+import { isQualifyingMatchForPoll, isPollClosedForMatch, getMatchPredictions, submitMatchPrediction, getUserVoteForMatch } from '../lib/predictions.js';
 
 function getStatusColor(status) {
     switch (status) {
@@ -277,8 +277,8 @@ export async function renderPublicMatchesPage() {
                       <span style="font-weight: 700; color: var(--color-yellow); display: flex; align-items: center; gap: 0.35rem;">
                         📊 Pronostici Tifosi <span class="poll-voter-count text-muted" style="font-weight: normal; font-size: 0.75rem;">(Caricamento...)</span>
                       </span>
-                      <button class="open-poll-btn btn-small" data-match-id="${match.id}" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; background: var(--color-yellow); color: #000; font-weight: 800; border-radius: 20px; border: none; cursor: pointer;">
-                        🗳️ Vota Ora
+                      <button class="open-poll-btn btn-small" data-match-id="${match.id}" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; background: ${isPollClosedForMatch(match) ? 'rgba(255,255,255,0.2)' : 'var(--color-yellow)'}; color: ${isPollClosedForMatch(match) ? '#fff' : '#000'}; font-weight: 800; border-radius: 20px; border: none; cursor: pointer;">
+                        ${isPollClosedForMatch(match) ? '📊 Vedi Risultati' : '🗳️ Vota Ora'}
                       </button>
                     </div>
 
@@ -664,9 +664,10 @@ export function openMatchPollModal(match, onVoteSubmitted) {
   async function updateModalStats() {
     const stats = await getMatchPredictions(match, true);
     let currentVote = getUserVoteForMatch(match.id);
+    const isClosed = isPollClosedForMatch(match);
 
     // Self-healing: if localStorage recorded a vote previously but Cloud DB has 0 votes, clear the stale local lock
-    if (currentVote && stats.totalVotes === 0) {
+    if (currentVote && stats.totalVotes === 0 && !isClosed) {
       const votes = JSON.parse(localStorage.getItem('user_match_votes') || '{}');
       delete votes[match.id];
       localStorage.setItem('user_match_votes', JSON.stringify(votes));
@@ -674,10 +675,25 @@ export function openMatchPollModal(match, onVoteSubmitted) {
     }
 
     const hasVoted = Boolean(currentVote);
+    const isDisabled = hasVoted || isClosed;
+
     const badge = document.getElementById('poll-voted-badge');
     if (badge) {
-      if (hasVoted) badge.classList.remove('hidden');
-      else badge.classList.add('hidden');
+      if (isClosed && !hasVoted) {
+        badge.classList.remove('hidden');
+        badge.style.background = 'rgba(239, 68, 68, 0.15)';
+        badge.style.color = '#ef4444';
+        badge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        badge.textContent = '🔒 Le votazioni per questo pronostico sono chiuse (Partita iniziata/terminata)';
+      } else if (hasVoted) {
+        badge.classList.remove('hidden');
+        badge.style.background = 'rgba(255, 215, 0, 0.1)';
+        badge.style.color = 'var(--color-yellow)';
+        badge.style.border = 'none';
+        badge.textContent = `✓ Voto espresso! ${isClosed ? '(Votazioni chiuse)' : 'È consentito 1 solo voto per sondaggio.'}`;
+      } else {
+        badge.classList.add('hidden');
+      }
     }
 
     const container = document.getElementById('poll-modal-options');
@@ -685,11 +701,11 @@ export function openMatchPollModal(match, onVoteSubmitted) {
 
     container.innerHTML = `
       <!-- HOME OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'home' ? 'voted-active' : ''}" data-vote="home" ${hasVoted ? 'disabled' : ''} style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'home' ? 'voted-active' : ''}" data-vote="home" ${isDisabled ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'home' ? '#22c55e' : 'rgba(255,255,255,0.15)'};
         background: ${currentVote === 'home' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255,255,255,0.05)'};
-        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
-        opacity: ${hasVoted && currentVote !== 'home' ? '0.6' : '1'};
+        cursor: ${isDisabled ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${isDisabled && currentVote !== 'home' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🛡️</span>
@@ -698,17 +714,17 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${stats.homePct}%</span>
           <span class="btn-small" style="background: ${currentVote === 'home' ? '#22c55e' : 'rgba(255,255,255,0.15)'}; color: ${currentVote === 'home' ? '#000' : '#fff'}; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'home' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
+            ${currentVote === 'home' ? '✓ Tuo Voto' : (isClosed ? 'Chiuso' : (hasVoted ? 'Scelta' : 'Vota'))}
           </span>
         </div>
       </button>
 
       <!-- DRAW OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'draw' ? 'voted-active' : ''}" data-vote="draw" ${hasVoted ? 'disabled' : ''} style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'draw' ? 'voted-active' : ''}" data-vote="draw" ${isDisabled ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'draw' ? '#eab308' : 'rgba(255,255,255,0.15)'};
         background: ${currentVote === 'draw' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255,255,255,0.05)'};
-        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
-        opacity: ${hasVoted && currentVote !== 'draw' ? '0.6' : '1'};
+        cursor: ${isDisabled ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${isDisabled && currentVote !== 'draw' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🤝</span>
@@ -717,17 +733,17 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #eab308;">${stats.drawPct}%</span>
           <span class="btn-small" style="background: ${currentVote === 'draw' ? '#eab308' : 'rgba(255,255,255,0.15)'}; color: ${currentVote === 'draw' ? '#000' : '#fff'}; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'draw' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
+            ${currentVote === 'draw' ? '✓ Tuo Voto' : (isClosed ? 'Chiuso' : (hasVoted ? 'Scelta' : 'Vota'))}
           </span>
         </div>
       </button>
 
       <!-- AWAY OPTION -->
-      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'away' ? 'voted-active' : ''}" data-vote="away" ${hasVoted ? 'disabled' : ''} style="
+      <button class="poll-option-btn glass-card p-md flex items-center justify-between ${currentVote === 'away' ? 'voted-active' : ''}" data-vote="away" ${isDisabled ? 'disabled' : ''} style="
         border: 1.5px solid ${currentVote === 'away' ? '#3b82f6' : 'rgba(255,255,255,0.15)'};
         background: ${currentVote === 'away' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.05)'};
-        cursor: ${hasVoted ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
-        opacity: ${hasVoted && currentVote !== 'away' ? '0.6' : '1'};
+        cursor: ${isDisabled ? 'default' : 'pointer'}; text-align: left; width: 100%; border-radius: 12px; transition: all 0.2s ease;
+        opacity: ${isDisabled && currentVote !== 'away' ? '0.6' : '1'};
       ">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.2rem;">🛡️</span>
@@ -736,7 +752,7 @@ export function openMatchPollModal(match, onVoteSubmitted) {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 1.1rem; font-weight: 800; color: #3b82f6;">${stats.awayPct}%</span>
           <span class="btn-small" style="background: ${currentVote === 'away' ? '#3b82f6' : 'rgba(255,255,255,0.15)'}; color: #fff; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem;">
-            ${currentVote === 'away' ? '✓ Tuo Voto' : (hasVoted ? 'Scelta' : 'Vota')}
+            ${currentVote === 'away' ? '✓ Tuo Voto' : (isClosed ? 'Chiuso' : (hasVoted ? 'Scelta' : 'Vota'))}
           </span>
         </div>
       </button>
@@ -746,7 +762,7 @@ export function openMatchPollModal(match, onVoteSubmitted) {
       </div>
     `;
 
-    if (!hasVoted) {
+    if (!isDisabled) {
       container.querySelectorAll('.poll-option-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const voteChoice = e.currentTarget.dataset.vote;

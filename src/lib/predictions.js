@@ -41,6 +41,27 @@ export function isQualifyingMatchForPoll(match) {
   );
 }
 
+// Check if voting is closed for a match (past match start time or live/completed)
+export function isPollClosedForMatch(match) {
+  if (!match) return false;
+
+  // Closed if match status is live or completed
+  if (match.status === 'live' || match.status === 'completed') {
+    return true;
+  }
+
+  // Closed if current date/time is past match_date
+  if (match.match_date) {
+    const matchTime = new Date(match.match_date).getTime();
+    const now = Date.now();
+    if (now >= matchTime) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Get prediction tally for a match from Supabase Cloud DB
 export async function getMatchPredictions(matchInput, forceRefresh = false) {
   const matchId = typeof matchInput === 'object' ? matchInput.id : matchInput;
@@ -118,9 +139,21 @@ export async function getMatchPredictions(matchInput, forceRefresh = false) {
   return result;
 }
 
-// Submit a vote for a match (Saves to Supabase Cloud DB & locks local vote on success)
+// Submit a vote for a match (Enforces deadline & 1 vote per device & saves to Supabase Cloud DB)
 export async function submitMatchPrediction(matchInput, prediction) {
   const matchId = typeof matchInput === 'object' ? matchInput.id : matchInput;
+
+  // Check if voting is closed for this match
+  if (isPollClosedForMatch(matchInput)) {
+    console.warn('[Poll] Voting is closed for this match.');
+    return await getMatchPredictions(matchInput, true);
+  }
+
+  const existingVote = getUserVoteForMatch(matchId);
+  if (existingVote) {
+    console.warn('[Poll] User has already voted for match:', matchId);
+    return await getMatchPredictions(matchInput, true);
+  }
 
   let homeTeamId = typeof matchInput === 'object' ? matchInput.home_team_id : null;
   let awayTeamId = typeof matchInput === 'object' ? matchInput.away_team_id : null;
@@ -158,7 +191,6 @@ export async function submitMatchPrediction(matchInput, prediction) {
       console.error('[Poll] Error inserting vote to Supabase:', error);
     } else {
       console.log('[Poll] Vote successfully saved to Cloud Supabase DB:', data);
-      // Save local vote ONLY after DB insertion succeeds
       saveUserVoteForMatch(matchId, prediction);
     }
   } catch (e) {

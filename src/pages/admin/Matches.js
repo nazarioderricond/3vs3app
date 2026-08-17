@@ -729,7 +729,8 @@ export async function renderAdminMatchesPage() {
       }
 
       if (matchId) {
-        await supabase.from('match_scorers').delete().eq('match_id', matchId);
+        // Delete only player goalscorers (goals > 0), preserving poll prediction vote entries (goals = 0)
+        await supabase.from('match_scorers').delete().eq('match_id', matchId).gt('goals', 0);
 
         const scorersToInsert = [];
 
