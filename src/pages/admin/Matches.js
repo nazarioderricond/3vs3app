@@ -171,9 +171,7 @@ export async function renderAdminMatchesPage() {
       </div>
     </div>
     
-    <div class="matches-list">
-      ${renderMatchesHTML(matches)}
-    </div>
+    <div class="matches-list"></div>
   `;
 
   // Toggle form
@@ -182,9 +180,9 @@ export async function renderAdminMatchesPage() {
   const cancelBtn = page.querySelector('#cancel-btn');
   const form = page.querySelector('#create-match-form');
 
-  // State for editing & date filter
+  // State for editing & date filter (default to auto-select today/future)
   let editingMatchId = null;
-  let selectedDateFilter = 'all';
+  let selectedDateFilter = 'default';
 
   function scrollToMatchForm() {
     matchForm.classList.remove('hidden');
@@ -226,14 +224,34 @@ export async function renderAdminMatchesPage() {
       return a.localeCompare(b);
     });
 
-    // Auto-select today if present and initial state is 'all'
-    const today = new Date();
-    const todayIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    if (selectedDateFilter === 'all' && availableDatesMap.has(todayIso)) {
-      selectedDateFilter = todayIso;
+    // Default selection logic:
+    // 1. Today's date if present
+    // 2. Otherwise, closest upcoming future date (>= todayIso)
+    // 3. Fallback: most recent past date if all matches are in the past
+    if (selectedDateFilter === 'default' && sortedIsoDates.length > 0) {
+      const today = new Date();
+      const todayIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+      if (availableDatesMap.has(todayIso)) {
+        selectedDateFilter = todayIso;
+      } else {
+        const futureDate = sortedIsoDates.find(d => d !== 'none' && d >= todayIso);
+        if (futureDate) {
+          selectedDateFilter = futureDate;
+        } else {
+          const validDates = sortedIsoDates.filter(d => d !== 'none');
+          if (validDates.length > 0) {
+            selectedDateFilter = validDates[validDates.length - 1];
+          } else {
+            selectedDateFilter = 'all';
+          }
+        }
+      }
+    } else if (selectedDateFilter === 'default') {
+      selectedDateFilter = 'all';
     }
 
-    let optionsHtml = `<option value="all">📅 Tutte le date (${matches.length} partite)</option>`;
+    let optionsHtml = `<option value="all" ${selectedDateFilter === 'all' ? 'selected' : ''}>📅 Tutte le date (${matches.length} partite)</option>`;
     sortedIsoDates.forEach(iso => {
       const count = matches.filter(m => {
         if (iso === 'none') return !m.match_date;
