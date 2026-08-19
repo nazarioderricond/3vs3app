@@ -50,23 +50,30 @@ const routes = {
 // Initialize app
 async function init() {
     console.log('App: init() started');
+
+    // Safety fallback: Ensure initial loading screen is NEVER stuck for more than 2.5s on mobile PWA
+    const hideLoading = () => {
+        const loadingEl = document.getElementById('loading');
+        const mainAppEl = document.getElementById('main-app');
+        if (loadingEl && !loadingEl.classList.contains('hidden')) {
+            loadingEl.classList.add('hidden');
+            mainAppEl.classList.remove('hidden');
+        }
+    };
+    const safetyTimeout = setTimeout(hideLoading, 2500);
+
     try {
         await initAuth(renderCurrentPage);
         console.log('App: initAuth completed');
     } catch (e) {
         console.error('App: initAuth failed', e);
+    } finally {
+        clearTimeout(safetyTimeout);
+        hideLoading();
     }
-
-    // Hide loading screen
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('main-app').classList.remove('hidden');
 
     // Set up navigation
     setupRouter();
-
-    // Render initial page
-    // Render initial page
-    // renderCurrentPage(); // Removed to avoid double rendering (initAuth callback handles it)
 }
 
 // Setup client-side routing
@@ -171,26 +178,32 @@ export async function renderCurrentPage() {
     }
 
     // Check season requirements for non-admins
-    // Teams, Standings, and Matches are only visible if there is an active season OR user is admin
     if ((window.location.pathname === '/teams' || window.location.pathname === '/standings' || window.location.pathname === '/matches') && !isAdmin()) {
-        const { getActiveSeason } = await import('./lib/supabaseClient.js');
-        const activeSeason = await getActiveSeason();
-        if (!activeSeason) {
-            console.log('No active season, redirecting to home');
-            navigateTo('/');
-            return;
+        try {
+            const { getActiveSeason } = await import('./lib/supabaseClient.js');
+            const activeSeason = await getActiveSeason();
+            if (!activeSeason) {
+                console.log('No active season, redirecting to home');
+                navigateTo('/');
+                return;
+            }
+        } catch (err) {
+            console.warn('Error checking active season:', err);
         }
     }
 
     // Render navbar
     const navbarContainer = document.getElementById('navbar');
     if (currentUser) {
-        const navbarElement = await renderNavbar();
-        // Robust clearing: remove all children
-        while (navbarContainer.firstChild) {
-            navbarContainer.removeChild(navbarContainer.firstChild);
+        try {
+            const navbarElement = await renderNavbar();
+            while (navbarContainer.firstChild) {
+                navbarContainer.removeChild(navbarContainer.firstChild);
+            }
+            navbarContainer.appendChild(navbarElement);
+        } catch (err) {
+            console.warn('Error rendering navbar:', err);
         }
-        navbarContainer.appendChild(navbarElement);
     } else {
         while (navbarContainer.firstChild) {
             navbarContainer.removeChild(navbarContainer.firstChild);
@@ -198,7 +211,6 @@ export async function renderCurrentPage() {
     }
 
     // Check for zombie session (Auth OK but Profile Missing)
-    // Only redirect if we are not already on the register page to avoid loops
     if (currentUser && !currentProfile) {
         if (window.location.pathname !== '/register') {
             console.log('Zombie session detected, redirecting to register');
@@ -207,17 +219,32 @@ export async function renderCurrentPage() {
         }
     }
 
-    // Render page content
-    // Render page content
-    // Render page content
-    const pageContent = await route.component(params);
+    // Render page content with error boundary & mobile recovery
     const contentContainer = document.getElementById('content');
-
-    // Robust clearing: remove all children
-    while (contentContainer.firstChild) {
-        contentContainer.removeChild(contentContainer.firstChild);
+    try {
+        const pageContent = await route.component(params);
+        while (contentContainer.firstChild) {
+            contentContainer.removeChild(contentContainer.firstChild);
+        }
+        contentContainer.appendChild(pageContent);
+    } catch (err) {
+        console.error('Error rendering page component:', err);
+        while (contentContainer.firstChild) {
+            contentContainer.removeChild(contentContainer.firstChild);
+        }
+        contentContainer.innerHTML = `
+            <div class="glass-card text-center p-xl mt-xl" style="margin: 2rem auto; max-width: 500px;">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">📱⚡</div>
+                <h3 class="text-yellow mb-md">Connessione Mobile Lenta</h3>
+                <p class="text-muted mb-lg" style="font-size: 0.9rem;">
+                    Non è stato possibile caricare i dati in questo momento. Verifica la tua connessione internet e riprova.
+                </p>
+                <button class="btn btn-primary" onclick="window.location.reload()" style="padding: 0.6rem 1.5rem; font-weight: bold;">
+                    🔄 Ricarica Pagina
+                </button>
+            </div>
+        `;
     }
-    contentContainer.appendChild(pageContent);
 }
 
 // Start the app
@@ -227,14 +254,6 @@ initPWA();
 // PWA Installation & Service Worker Registration
 function initPWA() {
   if ('serviceWorker' in navigator) {
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
@@ -248,88 +267,50 @@ function initPWA() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) return;
 
-  // Check if user previously dismissed prompt
-  if (sessionStorage.getItem('pwa_prompt_dismissed') === 'true') return;
-
-  // Handle Android / Chromium PWA Prompt
-  let deferredPrompt = null;
+  // Listen for beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    deferredPrompt = e;
-    showAndroidInstallBanner(deferredPrompt);
+    const deferredPrompt = e;
+    showInstallBanner(deferredPrompt);
   });
-
-  // Handle iOS Safari Installation Guide
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  if (isIOS && isSafari && !isStandalone) {
-    setTimeout(() => {
-      showIOSInstallBanner();
-    }, 2000);
-  }
 }
 
-function showAndroidInstallBanner(deferredPrompt) {
+function showInstallBanner(deferredPrompt) {
   if (document.getElementById('pwa-install-banner')) return;
 
   const banner = document.createElement('div');
   banner.id = 'pwa-install-banner';
-  banner.className = 'pwa-banner';
+  banner.className = 'glass-card p-md flex items-center justify-between gap-md';
+  banner.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: 90%; max-width: 450px; z-index: 9999; border: 2px solid var(--color-yellow);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-radius: 12px;
+  `;
+
   banner.innerHTML = `
-    <div class="pwa-banner-content">
-      <img src="/icon-192.png" alt="3vs3 Logo" class="pwa-banner-logo">
-      <div class="pwa-banner-text">
-        <strong>Installa l'App 3vs3 Ischitella</strong>
-        <span>Aggiungi alla Home per un accesso rapido ed esperienza nativa</span>
+    <div class="flex items-center gap-md">
+      <img src="/assets/logo_final.png" alt="Logo" style="width: 40px; height: 40px; border-radius: 8px;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.95rem; color: #fff;">Installa l'App</h4>
+        <p style="margin: 0; font-size: 0.75rem; color: var(--color-muted);">Accedi più velocemente dalla home</p>
       </div>
     </div>
-    <div class="pwa-banner-actions">
-      <button id="pwa-install-btn" class="btn btn-primary btn-small" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; font-weight: bold;">📲 Installa</button>
-      <button id="pwa-dismiss-btn" class="btn-close-sm" title="Chiudi">✕</button>
+    <div class="flex items-center gap-xs">
+      <button id="pwa-install-btn" class="btn btn-primary btn-small" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Installa</button>
+      <button id="pwa-dismiss-btn" class="btn-icon" style="color: var(--color-muted); font-size: 1.2rem;">✕</button>
     </div>
   `;
 
   document.body.appendChild(banner);
 
   document.getElementById('pwa-install-btn').addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log('[PWA] User choice outcome:', outcome);
-      deferredPrompt = null;
-    }
     banner.remove();
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
   });
 
   document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
-    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
-    banner.remove();
-  });
-}
-
-function showIOSInstallBanner() {
-  if (document.getElementById('pwa-install-banner')) return;
-
-  const banner = document.createElement('div');
-  banner.id = 'pwa-install-banner';
-  banner.className = 'pwa-banner';
-  banner.innerHTML = `
-    <div class="pwa-banner-content">
-      <img src="/apple-touch-icon.png" alt="3vs3 Logo" class="pwa-banner-logo">
-      <div class="pwa-banner-text">
-        <strong>Installa l'App su iPhone</strong>
-        <span>Premi <strong>Condividi 📤</strong> in Safari e poi <strong>"Aggiungi alla schermata Home ➕"</strong></span>
-      </div>
-    </div>
-    <div class="pwa-banner-actions">
-      <button id="pwa-dismiss-btn" class="btn-close-sm" title="Chiudi">✕</button>
-    </div>
-  `;
-
-  document.body.appendChild(banner);
-
-  document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
-    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
     banner.remove();
   });
 }
