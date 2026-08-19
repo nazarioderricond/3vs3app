@@ -79,7 +79,8 @@ export async function renderStandingsPage(params) {
       player:players(id, first_name, last_name, team_id, team:teams(id, name, logo_url)),
       match:matches!inner(season_id, category, group_id, home_team_id, away_team_id)
     `)
-    .eq('match.season_id', currentSeason.id);
+    .eq('match.season_id', currentSeason.id)
+    .gt('goals', 0);
 
   const groupStageMatches = allMatches?.filter(m => m.phase === 'group_stage') || [];
   const playoffMatches = allMatches?.filter(m => m.phase !== 'group_stage') || [];

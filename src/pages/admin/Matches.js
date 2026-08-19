@@ -1031,8 +1031,8 @@ function renderMatchesHTML(matches) {
         
         <div class="grid grid-1 gap-md">
           ${group.matches.map(match => {
-            const homeScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.home_team_id)) || [];
-            const awayScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.away_team_id)) || [];
+            const homeScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.home_team_id) && s.goals > 0) || [];
+            const awayScorers = match.match_scorers?.filter(s => String(s.team_id) === String(match.away_team_id) && s.goals > 0) || [];
             const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
 
             return `
