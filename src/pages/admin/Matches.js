@@ -341,7 +341,8 @@ export async function renderAdminMatchesPage() {
       const { data } = await supabase
         .from('match_scorers')
         .select('*')
-        .eq('match_id', matchId);
+        .eq('match_id', matchId)
+        .gt('goals', 0);
       existingScorers = data || [];
     }
 
