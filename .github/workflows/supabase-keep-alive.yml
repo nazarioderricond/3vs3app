@@ -2,8 +2,8 @@ name: Keep Supabase Database Active
 
 on:
   schedule:
-    # Run every 2 days at 12:00 UTC
-    - cron: '0 12 */2 * *'
+    # Run every day at 08:00 UTC (multiple chances within Supabase's 7-day pause window)
+    - cron: '0 8 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
@@ -11,16 +11,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase REST API (Heartbeat)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://etbpjlpbzvqcpphsywgu.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM' }}
         run: |
           echo "Sending keep-alive ping to Supabase..."
-          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "https://etbpjlpbzvqcpphsywgu.supabase.co/rest/v1/seasons?select=id&limit=1" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YnBqbHBienZxY3BwaHN5d2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzYxODQsImV4cCI6MjA3OTU1MjE4NH0.8NkLYP-bddMIr8j214H3awNJNqsR_Aq89gAU-H6XTCM")
           
-          echo "Supabase HTTP Response Code: $RESPONSE_CODE"
-          if [ "$RESPONSE_CODE" -eq 200 ] || [ "$RESPONSE_CODE" -eq 206 ]; then
-            echo "✅ Heartbeat successful! Supabase DB activity refreshed."
-          else
-            echo "⚠️ Unexpected response code: $RESPONSE_CODE"
-            exit 1
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" --retry 3 --retry-delay 5 --max-time 15 -X GET "${SUPABASE_URL}/rest/v1/seasons?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
+          HTTP_BODY=$(echo "$RESPONSE" | sed -e 's/HTTP_STATUS\:.*//g')
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTP_STATUS://')
+
+          echo "Supabase REST API Response Code: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 206 ]; then
+            echo "✅ Primary Heartbeat successful! Supabase DB activity refreshed."
+            exit 0
           fi
+
+          echo "⚠️ Primary ping returned status $HTTP_STATUS. Response body: $HTTP_BODY"
+          echo "Attempting fallback Auth Health check..."
+
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 5 --max-time 15 -X GET "${SUPABASE_URL}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+
+          echo "Supabase Auth Health HTTP Code: $AUTH_STATUS"
+
+          if [ "$AUTH_STATUS" -eq 200 ]; then
+            echo "✅ Auth Health ping successful!"
+            exit 0
+          fi
+
+          echo "❌ Heartbeat failed. If HTTP code is 000, host resolution failed because the Supabase project is likely PAUSED in the Supabase Dashboard."
+          exit 1
